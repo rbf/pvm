@@ -23,8 +23,7 @@ export __DEVENV_DEV_SETUP_SCRIPT_FULL_PATH="${0:A}"
 export __DEVENV_APP_SETUP_DIR="$(dirname "${__DEVENV_DEV_SETUP_SCRIPT_FULL_PATH}")"
 export __DEVENV_APP_ROOT_DIR="$(pwd)"
 
-export __DEVENV_ELIXIR_VERSION="1.12.3-alpine"
-export __DEVENV_PHOENIX_VERSION="1.6.2"
+export __DEVENV_NODE_VERSION="17.1.0-alpine3.13"
 
 function __echo_success() { print -P "%F{2}SUCCESS${*+: }${*}%f" }
 function __echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" }
@@ -39,23 +38,22 @@ function __devenv_check_docker_available_and_running() {
   fi
 }
 
-function __devenv_docker_elixir_image_present() {
-  docker image inspect \
-      --format="Image '$(__devenv_docker_get_image_name_and_tag)' created on {{.Created}}" \
-      "$(__devenv_docker_get_image_name_and_tag)" \
-      2>/dev/null
+function __devenv_docker_node_image_present() {
+   docker image inspect \
+          --format="Image '$(__devenv_docker_get_image_name_and_tag)' created on {{.Created}}" \
+          "$(__devenv_docker_get_image_name_and_tag)" \
+          2>/dev/null
 }
 
-function __devenv_docker_build_elixir_image() {
+function __devenv_docker_build_node_image() {
   __devenv_check_docker_available_and_running || return $?
-  echo "Building dev image with Elixir v${__DEVENV_ELIXIR_VERSION} and Phoenix v${__DEVENV_PHOENIX_VERSION}."
+  echo "Building dev image with node v${__DEVENV_NODE_VERSION}."
   pwd
   DOCKER_SCAN_SUGGEST=false docker build \
     --network host \
-    --build-arg ELIXIR_VERSION=${__DEVENV_ELIXIR_VERSION} \
-    --build-arg PHOENIX_VERSION=${__DEVENV_PHOENIX_VERSION} \
-    --label "org.opencontainers.image.title=Elixir Dev Image" \
-    --label "org.opencontainers.image.description=Image build with 'devenv' to make available elixir related commands." \
+    --build-arg NODE_VERSION=${__DEVENV_NODE_VERSION} \
+    --label "org.opencontainers.image.title=Node.js Dev Image" \
+    --label "org.opencontainers.image.description=Image build with 'devenv' to make available node.js related commands." \
     --label "org.opencontainers.image.created=$(date)" \
     --label "org.opencontainers.image.licenses=Private - Not for public usage" \
     --tag $(__devenv_docker_get_image_name_and_tag) \
@@ -64,27 +62,27 @@ function __devenv_docker_build_elixir_image() {
 }
 
 function __devenv_docker_get_image_name_and_tag() {
-  print "devenv-image-elixir:${__DEVENV_ELIXIR_VERSION}-phoenix-${__DEVENV_PHOENIX_VERSION}"
+  print "devenv-image-node:${__DEVENV_NODE_VERSION}"
 }
 
-function __devenv_docker_elixir_dev_img_run() {
+function __devenv_docker_node_dev_img_run() {
   __devenv_check_docker_available_and_running || return $?
   docker run \
       --interactive \
       --tty \
       --rm \
       --publish 4000:4000 \
-      --name elixir-devenv-ctr \
-      --hostname elixir-devenv-ctr \
+      --name node-devenv-ctr \
+      --hostname node-devenv-ctr \
       --volume "${__DEVENV_APP_ROOT_DIR}":/home/dev \
       "$(__devenv_docker_get_image_name_and_tag)" \
       "${@}"
 }
 
-if __devenv_docker_elixir_image_present; then
+if __devenv_docker_node_image_present; then
   print
 else
-  __devenv_docker_build_elixir_image || return $?
+  __devenv_docker_build_node_image || return $?
 fi
 
 function __devenv_print_and_run_command() {
@@ -92,27 +90,23 @@ function __devenv_print_and_run_command() {
   __devenv_docker_node_dev_img_run "${@}"
 }
 
-__devenv_print_and_run_command elixir --version || return $?
+__devenv_print_and_run_command node --version || return $?
 echo
 
-__devenv_print_and_run_command mix phx.new --version || return $?
+__devenv_print_and_run_command npm --version || return $?
 echo
 
-alias elixir='__devenv_docker_elixir_dev_img_run elixir'
-alias mix='__devenv_docker_elixir_dev_img_run mix'
-alias iex='__devenv_docker_elixir_dev_img_run iex'
-alias escript='__devenv_docker_elixir_dev_img_run escript'
+alias node='__devenv_docker_node_dev_img_run node'
+alias npm='__devenv_docker_node_dev_img_run npm'
 
-alias devenv-container='__devenv_docker_elixir_dev_img_run'
+alias devenv-container='__devenv_docker_node_dev_img_run'
 
 echo "You have now following commands available in this shell:"
 echo
-echo "  - elixir"
-echo "  - mix"
-echo "  - iex"
-echo "  - escript"
+echo "  - node"
+echo "  - npm"
 echo "  - devenv-container"
 echo
 
-unset -f __devenv_docker_build_elixir_image
+unset -f __devenv_docker_build_node_image
 unset -f __devenv_print_and_run_command
