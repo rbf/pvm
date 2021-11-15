@@ -1,0 +1,108 @@
+# This file is to be sourced with devenv.
+
+# Usage:  docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
+#
+# Run a command in a new container
+#
+#   -d, --detach             Run container in background and print container ID
+#   -e, --env list           Set environment variables
+#   -i, --interactive        Keep STDIN open even if not attached
+#   -p, --publish list       Publish a container's port(s) to the host
+#   -t, --tty                Allocate a pseudo-TTY
+#   --rm                     Automatically remove the container when it exits
+#   --name string            Assign a name to the container
+#   -h, --hostname string    Container host name
+#   -v, --volume list        Bind mount a volume
+
+if [[ "${SHELL}" != '/bin/zsh' ]]; then
+  echo "This script is mean to be sourced on a zsh shell."
+  return 1
+fi
+
+export __DEVENV_DEV_SETUP_SCRIPT_FULL_PATH="${0:A}"
+export __DEVENV_APP_SETUP_DIR="$(dirname "${__DEVENV_DEV_SETUP_SCRIPT_FULL_PATH}")"
+export __DEVENV_APP_ROOT_DIR="$(pwd)"
+
+export __DEVENV_ELIXIR_VERSION="1.12.3-alpine"
+export __DEVENV_PHOENIX_VERSION="1.6.2"
+
+function __echo_success() { print -P "%F{2}SUCCESS${*+: }${*}%f" }
+function __echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" }
+
+function __devenv_check_docker_available_and_running() {
+  if ! which docker 1>/dev/null; then
+    __echo_error "'docker' command not found. Is docker installed?"
+    false
+  elif ! docker system info 1>/dev/null 2>/dev/null; then
+    __echo_error "Cannot connect to the Docker daemon. Is the Docker daemon running?"
+    false
+  fi
+}
+
+function __devenv_docker_elixir_image_present() {
+   docker image inspect "$(__devenv_docker_get_image_name_and_tag)" 1>/dev/null 2>&1
+}
+
+function __devenv_docker_build_elixir_image() {
+  __devenv_check_docker_available_and_running || return $?
+  echo "Building dev image with Elixir v${__DEVENV_ELIXIR_VERSION} and Phoenix v${__DEVENV_PHOENIX_VERSION}."
+  pwd
+  DOCKER_SCAN_SUGGEST=false docker build \
+    --network host \
+    --build-arg ELIXIR_VERSION=${__DEVENV_ELIXIR_VERSION} \
+    --build-arg PHOENIX_VERSION=${__DEVENV_PHOENIX_VERSION} \
+    --label "org.opencontainers.image.title=Elixir Dev Image" \
+    --label "org.opencontainers.image.description=Image build with 'devenv' to make available elixir related commands." \
+    --label "org.opencontainers.image.created=$(date)" \
+    --label "org.opencontainers.image.licenses=Private - Not for public usage" \
+    --tag $(__devenv_docker_get_image_name_and_tag) \
+    --file "${__DEVENV_APP_SETUP_DIR}/Dockerfile" \
+    .
+}
+
+function __devenv_docker_get_image_name_and_tag() {
+  print "devenv-image-elixir:${__DEVENV_ELIXIR_VERSION}-phoenix-${__DEVENV_PHOENIX_VERSION}"
+}
+
+function __devenv_docker_elixir_dev_img_run() {
+  __devenv_check_docker_available_and_running || return $?
+  docker run \
+      --interactive \
+      --tty \
+      --rm \
+      --publish 4000:4000 \
+      --name elixir-devenv-ctr \
+      --hostname elixir-devenv-ctr \
+      --volume "${__DEVENV_APP_ROOT_DIR}":/home/dev \
+      "$(__devenv_docker_get_image_name_and_tag)" \
+      "${@}"
+}
+
+if ! __devenv_docker_elixir_image_present; then
+  __devenv_docker_build_elixir_image || return $?
+fi
+
+__devenv_docker_elixir_dev_img_run elixir --version || return $?
+echo
+
+__devenv_docker_elixir_dev_img_run mix phx.new --version || return $?
+echo
+
+
+alias elixir='__devenv_docker_elixir_dev_img_run elixir'
+alias mix='__devenv_docker_elixir_dev_img_run mix'
+alias iex='__devenv_docker_elixir_dev_img_run iex'
+alias escript='__devenv_docker_elixir_dev_img_run escript'
+
+alias devenv-container='__devenv_docker_elixir_dev_img_run'
+
+echo "You have now following commands available in this shell:"
+echo
+echo "  - elixir"
+echo "  - mix"
+echo "  - iex"
+echo "  - escript"
+echo "  - devenv-container"
+echo
+
+unset -f __devenv_docker_build_elixir_image

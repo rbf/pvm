@@ -1,0 +1,138 @@
+#!/bin/zsh
+
+# parse install option to ln -s this to /usr/local/bin
+
+set -o pipefail
+
+DEVENV_VERSION='v0.1'
+
+# Make arrays to be zero-based, as in bash.
+setopt KSH_ARRAYS
+
+DEVENV_FULL_PATH="${0:A}"
+DEVENV_DIR="$(dirname "${DEVENV_FULL_PATH}")"
+DEVENV_NAME="$(basename "${DEVENV_FULL_PATH}")"
+INSTALL_DIR="/usr/local/bin"
+INSTALL_FULL_PATH="${INSTALL_DIR}/${DEVENV_NAME}"
+
+function print_help() {
+  cat << EOF
+devenv ${DEVENV_VERSION}
+
+    Install and use local dev environments without installing them locally
+    leveraging Docker to simulate the commands available normally for the
+    given dev environment.
+
+    Note that this currently only works for Zshell and in a Tmux session.
+
+Available commands:
+
+  install           Creates a simlink to /usr/local/bin and explains what else to do.
+  list              List available env types.
+  open <env name>   Opens a new tmux window with the tools for the selected env.
+  help              Print this help.
+
+EOF
+}
+
+function exit_with_error() {
+  print -P "%F{1}ERROR${*+: }${*}%f" 1>&2
+  print 1>&2
+  print_help 1>&2
+  exit 1
+}
+
+function exit_with_warn() {
+  print -P "%F{3}${*:?missing warn message}%f"
+  exit 1
+}
+
+function exit_with_success() {
+  print -P "%F{2}SUCCESS${*+: }${*}%f"
+  exit 0
+}
+
+function install() {
+  if [ -f  "${INSTALL_FULL_PATH}" ]; then
+    exit_with_warn "A file named '${DEVENV_NAME}' is already present in '${INSTALL_DIR}'. Nothing to do."
+  fi
+  ln -vs "${DEVENV_FULL_PATH}" "${INSTALL_FULL_PATH}" || exit_with_error
+  cat << EOF
+Now add the following line at the end of your .zshrc file:
+
+  \$(devenv source \${__DEVENV_TARGET})
+
+EOF
+}
+
+function list() {
+  find "${DEVENV_DIR}/env" -type d -mindepth 1 -maxdepth 1 -exec basename {} \;
+}
+
+function check_available_target_env_or_exit() {
+  if ! [ -n "${1}" ]; then
+    exit_with_error "Target env missing."
+  fi
+
+  TARGET_ENV_DIR="${DEVENV_DIR}/env/${1}"
+  if ! [ -d "${TARGET_ENV_DIR}" ]; then
+    exit_with_error "Target env '${1}' not found."
+  fi
+}
+
+function source_target_env() {
+  [ -n "${1}" ] || return
+  check_available_target_env_or_exit "${1}"
+  print "source ${TARGET_ENV_DIR}/script"
+}
+
+function open_target_env() {
+  if [ -z "${TMUX}" ]; then
+    exit_with_error "${DEVENV_NAME} currently only works from within a tmux session."
+  fi
+  __DEVENV_TARGET="${1}"
+  check_available_target_env_or_exit "${__DEVENV_TARGET}"
+  if tmux new-window -n "${__DEVENV_TARGET} (devenv)" -e "__DEVENV_TARGET=${__DEVENV_TARGET}"; then
+    exit_with_success "New tmux window opened for target env '${__DEVENV_TARGET}'."
+  else
+    exit_with_error "Unable to open a new tmux window for target env '${__DEVENV_TARGET}'."
+  fi
+
+}
+
+function parse_commands_and_options() {
+  while (( # > 0 )); do
+    case "${1}" in
+      install )
+        shift
+        install
+        ;;
+      list )
+        shift
+        list
+        ;;
+      open )
+        shift
+        open_target_env "${@}"
+        break
+        ;;
+      source )
+        shift
+        source_target_env "${@}"
+        break
+        ;;
+      help )
+        shift
+        print_help
+        exit
+        ;;
+      * )
+        exit_with_error "Unsupported option: '${1}'"
+        ;;
+    esac
+  done
+}
+
+parse_commands_and_options "${@}"
+
+exit
