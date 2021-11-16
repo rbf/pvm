@@ -181,10 +181,15 @@ devenv_aliases[devenv_container]='__devenv_docker_dev_img_run /bin/bash'
 
 __devenv_docker_dev_img_start || return $?
 
-TRAPEXIT() {
-  print "Force-removing devenv docker container '${__DEVENV_TARGET_COINTAINER_NAME}'..."
+# Use list trap instead of the function trap TRAPEXIT() because it does not get
+# inherited by subshells. From the doc: "Function traps are not reset within
+# subshells, in accordance with zsh behaviour; list traps are reset, in
+# accordance with POSIX behaviour."
+# DOC: https://zsh.sourceforge.io/Doc/Release/Functions.html
+trap '
+  print "Force-removing devenv docker container ${__DEVENV_TARGET_COINTAINER_NAME}..."
   docker rm --force "${__DEVENV_TARGET_COINTAINER_NAME}"
-}
+' EXIT
 
 source "${__DEVENV_TARGET_DIR}/post-script"
 
