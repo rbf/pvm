@@ -11,6 +11,7 @@
 #   -t, --tty                Allocate a pseudo-TTY
 #   --rm                     Automatically remove the container when it exits
 #   --name string            Assign a name to the container
+#   --restart string         Restart policy to apply when a container exits (default "no")
 #   -h, --hostname string    Container host name
 #   -v, --volume list        Bind mount a volume
 
@@ -79,7 +80,6 @@ function __devenv_docker_image_title() {
 function __devenv_docker_build_image() {
   __devenv_check_docker_available_and_running || return $?
   print "Building $(__devenv_docker_image_title)"
-  pwd
   DOCKER_SCAN_SUGGEST=false docker build \
     --network host \
     --build-arg BASE_IMAGE_VERSION=${__DEVENV_BASE_IMAGE_VERSION} \
@@ -125,6 +125,7 @@ function __devenv_docker_dev_img_start() {
 
   __DEVENV_TARGET_COINTAINER_SHORT_ID="$(docker run \
           --detach \
+          --restart=unless-stopped \
           --publish "${__DEVENV_PORT}:${__DEVENV_PORT}" \
           --name "${__DEVENV_TARGET_COINTAINER_NAME}" \
           --hostname "${__DEVENV_TARGET_COINTAINER_NAME}" \
