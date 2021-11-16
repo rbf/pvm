@@ -199,6 +199,18 @@ for alias_name in ${(k)devenv_aliases}; do
 done
 print
 
+print "A quick way to hello world in ${__DEVENV_TARGET}:"
+print
+for line in ${__DEVENV_HOW_TO_HELLO_WORLD_LINES[@]?Missing}; do
+  print -- "  $ ${line}" | sed "s/<<HELLOWORLDTEXT>>/Hello World!/"
+done
+print
+
+print "For more information about getting started with ${__DEVENV_TARGET} visit:"
+print
+print -- "  - ${__DEVENV_GET_STARTED_URL?Missing}"
+print
+
 unset -f __devenv_print_and_run_command
 unset -f __devenv_check_docker_available_and_running
 unset -f __devenv_docker_dev_img_on_demand_run
@@ -211,3 +223,5 @@ unset -f __devenv_echo_error
 unset -f __devenv_slugify
 unset -f __devenv_docker_image_title
 unset devenv_aliases
+unset __DEVENV_GET_STARTED_URL
+unset __DEVENV_HOW_TO_HELLO_WORLD_LINES

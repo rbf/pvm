@@ -2,3 +2,8 @@ export __DEVENV_BASE_IMAGE_VERSION="openjdk-18-tools-deps-1.10.3.1020-bullseye"
 export __DEVENV_SECONDARY_NAME="lein"
 export __DEVENV_SECONDARY_VERSION="2.9.1"
 export __DEVENV_PORT="3000"
+
+__DEVENV_GET_STARTED_URL='https://clojure.org/guides/getting_started'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo '(println \"<<HELLOWORLDTEXT>>\")' > hello-world.clj")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("clj -M hello-world.clj")
