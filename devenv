@@ -92,7 +92,7 @@ function open_target_env() {
   fi
   __DEVENV_TARGET="${1}"
   check_available_target_env_or_exit "${__DEVENV_TARGET}"
-  if tmux new-window -n "${__DEVENV_TARGET} (devenv)" -e "__DEVENV_TARGET=${__DEVENV_TARGET}"; then
+  if tmux new-window -n "${__DEVENV_TARGET} (devenv)" -e "IS_ALLOWED_TO_PRINT_LOGIN_GREETING=false" -e "__DEVENV_TARGET=${__DEVENV_TARGET}"; then
     exit_with_success "New tmux window opened for target env '${__DEVENV_TARGET}'."
   else
     exit_with_error "Unable to open a new tmux window for target env '${__DEVENV_TARGET}'."

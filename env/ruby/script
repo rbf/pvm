@@ -1,0 +1,152 @@
+# This file is to be sourced with devenv.
+
+# Usage:  docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
+#
+# Run a command in a new container
+#
+#   -d, --detach             Run container in background and print container ID
+#   -e, --env list           Set environment variables
+#   -i, --interactive        Keep STDIN open even if not attached
+#   -p, --publish list       Publish a container's port(s) to the host
+#   -t, --tty                Allocate a pseudo-TTY
+#   --rm                     Automatically remove the container when it exits
+#   --name string            Assign a name to the container
+#   -h, --hostname string    Container host name
+#   -v, --volume list        Bind mount a volume
+
+if [[ "${SHELL}" != '/bin/zsh' ]]; then
+  echo "This script is mean to be sourced on a zsh shell."
+  return 1
+fi
+
+export __DEVENV_DEV_SETUP_SCRIPT_FULL_PATH="${0:A}"
+export __DEVENV_APP_SETUP_DIR="$(dirname "${__DEVENV_DEV_SETUP_SCRIPT_FULL_PATH}")"
+export __DEVENV_APP_ROOT_DIR="$(pwd)"
+
+export __DEVENV_RUBY_VERSION="3.0.2"
+export __DEVENV_RUBYONRAILS_VERSION="6.1.4"
+
+function __echo_success() { print -P "%F{2}SUCCESS${*+: }${*}%f" }
+function __echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" }
+
+function __devenv_check_docker_available_and_running() {
+  if ! which docker 1>/dev/null; then
+    __echo_error "'docker' command not found. Is docker installed?"
+    false
+  elif ! docker system info 1>/dev/null 2>/dev/null; then
+    __echo_error "Cannot connect to the Docker daemon. Is the Docker daemon running?"
+    false
+  fi
+}
+
+function __devenv_docker_ruby_image_uptodate() {
+  __devenv_docker_dockerfile_unmodified_since_last_build || return 1
+  docker image inspect \
+      --format="Image '$(__devenv_docker_get_image_name_and_tag)' created on {{.Created}}" \
+      "$(__devenv_docker_get_image_name_and_tag)" \
+      2>/dev/null
+}
+
+function __devenv_docker_build_ruby_image() {
+  __devenv_check_docker_available_and_running || return $?
+  echo "Building dev image with Ruby v${__DEVENV_RUBY_VERSION} and Ruby on Rails v${__DEVENV_RUBYONRAILS_VERSION}."
+  pwd
+  DOCKER_SCAN_SUGGEST=false docker build \
+    --network host \
+    --build-arg RUBY_VERSION=${__DEVENV_RUBY_VERSION} \
+    --build-arg RUBYONRAILS_VERSION=${__DEVENV_RUBYONRAILS_VERSION} \
+    --label "org.opencontainers.image.title=Ruby Dev Image" \
+    --label "org.opencontainers.image.description=Image build with 'devenv' to make available ruby related commands." \
+    --label "org.opencontainers.image.created=$(date)" \
+    --label "org.opencontainers.image.revision=$(__devenv_docker_get_dockerfile_hash)" \
+    --label "org.opencontainers.image.licenses=Private - Not for public usage" \
+    --tag $(__devenv_docker_get_image_name_and_tag) \
+    --file "${__DEVENV_APP_SETUP_DIR}/Dockerfile" \
+    .
+}
+
+function __devenv_docker_dockerfile_unmodified_since_last_build() {
+  test \
+   "$(__devenv_docker_get_dockerfile_hash)" \
+   = \
+   "$(docker image inspect \
+        --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' \
+        $(__devenv_docker_get_image_name_and_tag))"
+}
+
+function __devenv_docker_get_image_name_and_tag() {
+  print "devenv-image-ruby:${__DEVENV_RUBY_VERSION}-rails-v${__DEVENV_RUBYONRAILS_VERSION}"
+}
+
+function __devenv_docker_get_dockerfile_hash() {
+  shasum -a256 "${__DEVENV_APP_SETUP_DIR}/Dockerfile" | head -c 7
+}
+
+function __devenv_docker_ruby_dev_img_run() {
+  __devenv_check_docker_available_and_running || return $?
+  docker run \
+      --interactive \
+      --tty \
+      --rm \
+      --publish 4000:4000 \
+      --name ruby-devenv-ctr \
+      --hostname ruby-devenv-ctr \
+      --volume "${__DEVENV_APP_ROOT_DIR}":/home/dev \
+      "$(__devenv_docker_get_image_name_and_tag)" \
+      "${@}"
+}
+
+if __devenv_docker_ruby_image_uptodate; then
+  print
+else
+  __devenv_docker_build_ruby_image || return $?
+fi
+
+function __devenv_print_and_run_command() {
+  print "$ ${@}"
+  __devenv_docker_ruby_dev_img_run "${@}"
+}
+
+if ! [ -f '.bundle/global/bin/rails' ]; then
+  mkdir -p .bundle || return $?
+  print 'Copying preinstalled gems into .bundle'
+  __devenv_docker_ruby_dev_img_run cp -R /home/preinstalled-gems /home/dev/.bundle/global || return $?
+  echo
+fi
+
+__devenv_print_and_run_command ruby --version || return $?
+echo
+
+__devenv_print_and_run_command bundle --version || return $?
+echo
+
+if [ -f Gemfile ]; then
+  __devenv_print_and_run_command bundle install || return $?
+  echo
+fi
+
+__devenv_print_and_run_command rails --version || return $?
+echo
+
+alias ruby='__devenv_docker_ruby_dev_img_run ruby'
+alias bundle='__devenv_docker_ruby_dev_img_run bundle'
+alias gem='__devenv_docker_ruby_dev_img_run gem'
+alias rspec='__devenv_docker_ruby_dev_img_run rspec'
+alias rails='__devenv_docker_ruby_dev_img_run rails'
+alias server='__devenv_docker_ruby_dev_img_run rails server -p 4000 -b 0.0.0.0'
+
+alias devenv-container='__devenv_docker_ruby_dev_img_run'
+
+echo "You have now following commands available in this shell:"
+echo
+echo "  - ruby"
+echo "  - bundle"
+echo "  - gem"
+echo "  - rspec"
+echo "  - rails"
+echo "  - server (for 'rails server -p 4000 -b 0.0.0.0')"
+echo "  - devenv-container"
+echo
+
+unset -f __devenv_docker_build_ruby_image
+unset -f __devenv_print_and_run_command
