@@ -1,0 +1,6 @@
+export __DEVENV_BASE_IMAGE_VERSION="1.56.1"
+
+__DEVENV_GET_STARTED_URL='https://www.rust-lang.org/learn/get-started'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("cargo init")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("cargo run")
