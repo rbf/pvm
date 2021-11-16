@@ -89,7 +89,7 @@ fi
 
 function __devenv_print_and_run_command() {
   print "$ ${@}"
-  __devenv_docker_node_dev_img_run "${@}"
+  __devenv_docker_elixir_dev_img_run "${@}"
 }
 
 __devenv_print_and_run_command elixir --version || return $?
