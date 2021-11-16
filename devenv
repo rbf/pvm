@@ -83,7 +83,7 @@ function check_available_target_env_or_exit() {
 function source_target_env() {
   [ -n "${1}" ] || return
   check_available_target_env_or_exit "${1}"
-  print "source ${TARGET_ENV_DIR}/script"
+  print "source ${DEVENV_DIR}/env/script"
 }
 
 function open_target_env() {

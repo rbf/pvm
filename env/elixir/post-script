@@ -1,0 +1,10 @@
+__devenv_print_and_run_command elixir --version || return $?
+echo
+
+__devenv_print_and_run_command mix phx.new --version || return $?
+echo
+
+devenv_aliases[elixir]='__devenv_docker_dev_img_run elixir'
+devenv_aliases[mix]='__devenv_docker_dev_img_run mix'
+devenv_aliases[iex]='__devenv_docker_dev_img_run iex'
+devenv_aliases[escript]='__devenv_docker_dev_img_run escript'

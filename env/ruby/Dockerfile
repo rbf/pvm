@@ -1,9 +1,6 @@
-# SOURCE: 21sep2021 https://github.com/recruitee/mix_docker
-# DOC: https://docs.docker.com/develop/develop-images/multistage-build/
+ARG BASE_IMAGE_VERSION
 
-ARG RUBY_VERSION
-
-FROM ruby:${RUBY_VERSION}
+FROM ruby:${BASE_IMAGE_VERSION}
 
 WORKDIR /home/dev
 
@@ -18,7 +15,7 @@ ENV BUNDLE_PATH="/home/dev/.bundle" \
 
 # Needs to be declared after the FROM clause.
 # SOURCE: 14sep2021 https://ryandaniels.ca/blog/docker-dockerfile-arg-from-arg-trouble/
-ARG RUBYONRAILS_VERSION
+ARG SECONDARY_VERSION
 
 # SOURCE: 26sep2021 https://www.shellhacks.com/alpine-install-curl/
 # DOC: https://wiki.alpinelinux.org/wiki/How_to_get_regular_stuff_working
@@ -29,6 +26,6 @@ RUN set -xe \
       && echo "alias la='ls -la'" >> /etc/bash.bashrc \
       && echo 'PATH="/home/dev/.bundle/bin:/home/dev/.bundle/global/bin:/home/preinstalled-gems/bin:${PATH}"' >> /etc/bash.bashrc \
       && git config --global init.defaultBranch main \
-      && gem install --install-dir /home/preinstalled-gems rails:${RUBYONRAILS_VERSION} rubocop
+      && gem install --install-dir /home/preinstalled-gems rails:${SECONDARY_VERSION} rubocop
 
 CMD ["/bin/bash", "-l"]

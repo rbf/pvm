@@ -1,9 +1,6 @@
-# SOURCE: 21sep2021 https://github.com/recruitee/mix_docker
-# DOC: https://docs.docker.com/develop/develop-images/multistage-build/
+ARG BASE_IMAGE_VERSION
 
-ARG NODE_VERSION
-
-FROM node:${NODE_VERSION}
+FROM node:${BASE_IMAGE_VERSION}
 
 WORKDIR /home/dev
 
