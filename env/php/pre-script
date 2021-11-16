@@ -1,0 +1,8 @@
+export __DEVENV_BASE_IMAGE_VERSION="8.0.12"
+
+__DEVENV_GET_STARTED_URL='https://www.php.net/manual/en/getting-started.php'
+
+# SOURCE: 16nov2021 https://gist.github.com/macagua/004940174289bd12a8e7d03ad92410bf
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo '<?php\\\\necho \"<<HELLOWORLDTEXT>>\\\\\\\\n\";' > hello.php")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("php hello.php")
+
