@@ -1,0 +1,4 @@
+export __DEVENV_BASE_IMAGE_VERSION="openjdk-18-tools-deps-1.10.3.1020-bullseye"
+export __DEVENV_SECONDARY_NAME="lein"
+export __DEVENV_SECONDARY_VERSION="2.9.1"
+export __DEVENV_PORT="3000"
