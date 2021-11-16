@@ -194,13 +194,13 @@ trap '
 
 source "${__DEVENV_TARGET_DIR}/post-script"
 
-for alias_name in ${(k)devenv_aliases}; do
-  alias ${alias_name}="${devenv_aliases[${alias_name}]}"
+for alias_name alias_command in ${(kv)devenv_aliases}; do
+  alias ${alias_name}="${alias_command}"
 done
 
 print "You have now following commands available in this shell session:"
 print
-for alias_name in ${(k)devenv_aliases}; do
+for alias_name in $(print -o ${(k)devenv_aliases}); do
   print -- "  - ${alias_name}"
 done
 print
@@ -208,7 +208,7 @@ print
 print "A quick way to hello world in ${__DEVENV_TARGET}:"
 print
 for line in ${__DEVENV_HOW_TO_HELLO_WORLD_LINES[@]?Missing}; do
-  print -- "  $ ${line}" | sed "s/<<HELLOWORLDTEXT>>/Hello World!/"
+  print -- "  $ ${line}" | sed "s/<<HELLOWORLDTEXT>>/Hello, world!/"
 done
 print
 
