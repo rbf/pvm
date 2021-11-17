@@ -1,0 +1,4 @@
+# Available Docker Image tags from https://hub.docker.com/_/clojure
+# The top line is the default version.
+# clojure image tags|compatible lein versions
+openjdk-18-tools-deps-1.10.3.1020-bullseye|2.9.1

@@ -1,0 +1,3 @@
+# Available Docker Image tags from https://hub.docker.com/_/php
+# The top line is the default version.
+8.0.12

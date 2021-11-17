@@ -45,6 +45,17 @@ if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
   return 1
 fi
 
+function __devenv_parse_available_versions() {
+  versions="$(set -o pipefail; cat "${__DEVENV_TARGET_DIR}/versions" | grep -v '#')" || return
+  # (f) Split the result of the expansion at newlines.
+  # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
+  for version in "${(f)versions}"; do
+    __DEVENV_TARGET_VERSIONS+=("${version%%|*}")
+    __DEVENV_TARGET_SECONDARY_VERSIONS+=("$(echo ${version} | sed '/|/!d;s/[^|]*|\(.*\)/\1/')")
+  done
+  unset version versions
+}
+
 declare -a __DEVENV_COMMANDS_TO_RUN_AT_THE_END
 # Associative array.
 # SOURCE: 16nov2021 https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
@@ -56,6 +67,19 @@ function __devenv_after_docker_dev_img_start() {
 
 if ! source "${__DEVENV_TARGET_DIR}/script"; then
   $(__devenv_abort "Unable to source '${__DEVENV_TARGET_DIR}/script'.")
+fi
+
+if ! __devenv_parse_available_versions; then
+  $(__devenv_abort "Unable to parse available versions from '${__DEVENV_TARGET_DIR}/versions'.")
+fi
+
+__DEVENV_BASE_IMAGE_VERSION="${__DEVENV_TARGET_VERSIONS[1]}"
+if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
+  if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}" ]; then
+    __DEVENV_SECONDARY_VERSION="${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}"
+  else
+    $(__devenv_abort "Missing version for '${__DEVENV_SECONDARY_NAME}'")
+  fi
 fi
 
 if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then

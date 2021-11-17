@@ -1,6 +1,4 @@
-__DEVENV_BASE_IMAGE_VERSION="3.0.2"
 __DEVENV_SECONDARY_NAME="Ruby on Rails"
-__DEVENV_SECONDARY_VERSION="6.1.4"
 __DEVENV_PORT="3000"
 
 __DEVENV_GET_STARTED_URL='http://www.ruby-lang.org/en/documentation/'

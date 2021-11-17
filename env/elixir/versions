@@ -1,0 +1,4 @@
+# Available Docker Image tags from https://hub.docker.com/_/elixir
+# The top line is the default version.
+# elixir image tags|compatible phoenix versions
+1.12.3-alpine|1.6.2
