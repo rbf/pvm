@@ -16,29 +16,42 @@ INSTALL_DIR="/usr/local/bin"
 INSTALL_FULL_PATH="${INSTALL_DIR}/${DEVENV_NAME}"
 
 function print_help() {
-  cat << EOF
+  cat << EOF | less -FRXK
 devenv ${DEVENV_VERSION}
 
-    Install and use local dev environments without installing them locally
+    Setup and use local dev environments without installing them locally
     leveraging Docker to simulate the commands available normally for the
     given dev environment.
 
     Note that this currently only works for Zshell and in a Tmux session.
 
+
+Usage:
+
+  devenv command [options]
+
+
 Available commands:
 
-  install           Creates a simlink to /usr/local/bin and explains what else to do.
-  list              List available env types.
-  open <env name>   Opens a new tmux window with the tools for the selected env.
-  help              Print this help.
+  install             Creates a simlink to /usr/local/bin and explains what else to do.
+
+  list                List available environments.
+
+      --all, -a             List all versions for each enviorment.
+      --filter, -f string   List only the environments matching the given string.
+      --verbose, -v         Include headers and base Docker image tag.
+      --porcelain           Format in a machine readable way (i.e. csv).
+
+  open string         Opens a new tmux window with the tools for the 'string' env.
+
+  help                Print this help and exits.
 
 EOF
 }
 
 function exit_with_error() {
   print -P "%F{1}ERROR${*+: }${*}%f" 1>&2
-  print 1>&2
-  print_help 1>&2
+  print "Type 'devenv help' for more information." 1>&2
   exit 1
 }
 
@@ -66,34 +79,104 @@ EOF
 }
 
 function list() {
-  function __devenv_parse_available_versions() {
-    versions="$(set -o pipefail; cat "${1}/versions" | grep -v '#')" || return
+  local is_porcelain=false
+  local is_verbose=false
+  local is_print_all_versions=false
+  local filter_pattern='.*'
+  while (( # > 0 )); do
+    case "${1}" in
+      --porcelain )
+        shift
+        is_porcelain=true
+        ;;
+      --verbose|-v )
+        shift
+        is_verbose=true
+        ;;
+      --all|-a )
+        shift
+        is_print_all_versions=true
+        ;;
+      --filter|-f )
+        flag="${1}"
+        shift
+        if [ -n "${1}" ]; then
+          filter_pattern="${1}"
+          shift
+        else
+          exit_with_error "Missing value for '${flag}' flag"
+        fi
+        ;;
+      * )
+        exit_with_error "Unsupported option '${1}' for list command"
+        ;;
+    esac
+  done
+
+  function parse_env_versions() {
+    unset image_tags tool_versions
+    if ! versions="$(set -o pipefail; cat "${1}/versions" | grep -v '#')"; then
+      exit_with_error "Unable to parse available versions from '${1}/versions'."
+    fi
     # (f) Split the result of the expansion at newlines.
     # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
     for version in "${(f)versions}"; do
-      __DEVENV_TARGET_VERSIONS+=("${version%%|*}")
-      __DEVENV_TARGET_SECONDARY_VERSIONS+=("$(echo ${version} | sed '/|/!d;s/[^|]*|\(.*\)/\1/')")
+      image_tags+=("${version%%|*}")
+      tool_versions+=("$(echo ${version} | sed '/|/!d;s/[^|]*|\(.*\)/\1/')")
+      $is_print_all_versions || break
     done
     unset version versions
   }
 
-  find "${DEVENV_DIR}/env" -type d -mindepth 1 -maxdepth 1 | sort | while read __devenv_env; do
-    if ! __devenv_parse_available_versions "${__devenv_env}"; then
-      exit_with_error "Unable to parse available versions from '${1}/versions'."
-    fi
-    local env_name="$(basename ${__devenv_env})"
-    local env_default_version="$(echo ${__DEVENV_TARGET_VERSIONS[0]} | grep -oE '\d+\.\d+\.\d+')"
+  function image_tag() {
+    $is_verbose && print -n "${image_tags[${i}]}${1}"
+  }
 
-    if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[0]}" ]; then
-      local secondary_name="$(grep '__DEVENV_SECONDARY_NAME' "${__devenv_env}/script" | cut -f 2 -d '=' | tr -d '"'"'")"
-      print "${env_name}|${env_default_version}|with ${secondary_name} ${__DEVENV_TARGET_SECONDARY_VERSIONS[0]}"
+  function tool_name() {
+    grep '__DEVENV_SECONDARY_NAME' "${env_dir}/script" | cut -f 2 -d '=' | tr -d '"'"'" || print -- "${1}"
+  }
+
+  function env_version() {
+    echo "${image_tags[${i}]}" | grep -oE '\d+\.\d+\.\d+'
+  }
+
+  function list_all() {
+    for (( i = 0; i < ${#image_tags[@]}; i++ )); do
+      if ((i == 0)); then
+        print -n "*"
+      else
+        print -n " "
+      fi
+      print -n "|${env_name}|$(env_version)|"
+      if $is_verbose; then
+        print -- "$(tool_name '-')|${tool_versions[i]:--}|$(image_tag)"
+      else
+        print -- "$(tool_name) ${tool_versions[i]}"
+      fi
+    done
+  }
+
+  function list_porcelain() {
+    for (( i = 0; i < ${#image_tags[@]}; i++ )); do
+      print "${env_name};$(env_version);$(tool_name);${tool_versions[${i}]};$(image_tag ';')"
+    done
+  }
+
+  if $is_verbose; then
+    if $is_porcelain; then
+      print "env;env version;tool;tool version;docker image tag;"
     else
-      print "${env_name}|${env_default_version}"
+      print " |Env|Env Version|Tool|Tool Version|Base Docker Image"
+      print -- " |-----------|-----------|-----------|-----------|-----------"
     fi
+  fi
 
-    unset __DEVENV_TARGET_VERSIONS __DEVENV_TARGET_SECONDARY_VERSIONS
+  find "${DEVENV_DIR}/env" -type d -mindepth 1 -maxdepth 1 | sort | while read env_dir; do
+    parse_env_versions "${env_dir}"
+    env_name="$(basename ${env_dir})"
+    $is_porcelain && list_porcelain || list_all | grep -- "${filter_pattern}"
   done
-  unset __devenv_env env_name
+  unset env_dir env_name
 }
 
 function check_available_target_env_or_exit() {
@@ -133,22 +216,24 @@ function parse_commands_and_options() {
       install )
         shift
         install
+        exit
         ;;
       list )
         shift
-        list | column -txs '|'
+        list "${@}" | column -txs '|'
+        exit
         ;;
       open )
         shift
         open_target_env "${@}"
-        break
+        exit
         ;;
       source )
         shift
         source_target_env "${@}"
-        break
+        exit
         ;;
-      help )
+      help|'' )
         shift
         print_help
         exit
@@ -158,6 +243,7 @@ function parse_commands_and_options() {
         ;;
     esac
   done
+  print_help
 }
 
 parse_commands_and_options "${@}"
