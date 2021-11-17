@@ -1,0 +1,34 @@
+__DEVENV_BASE_IMAGE_VERSION="3.0.2"
+__DEVENV_SECONDARY_NAME="Ruby on Rails"
+__DEVENV_SECONDARY_VERSION="6.1.4"
+__DEVENV_PORT="3000"
+
+__DEVENV_GET_STARTED_URL='http://www.ruby-lang.org/en/documentation/'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo 'puts \"<<HELLOWORLDTEXT>>\"' > hello_world.rb")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("ruby hello_world.rb")
+
+function __devenv_after_docker_dev_img_start() {
+  if ! [ -f '.bundle/global/bin/rails' ]; then
+    mkdir -p .bundle || return $?
+    print 'Copying preinstalled gems into .bundle'
+    __devenv_docker_dev_img_run cp -R /home/preinstalled-gems /home/dev/.bundle/global
+    echo
+  fi
+
+  if [ -f Gemfile ]; then
+    __devenv_print_and_run_command bundle install
+    echo
+  fi
+}
+
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('ruby --version')
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('bundle --version')
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('rails --version')
+
+__DEVENV_ALIASES[ruby]='__devenv_docker_dev_img_run ruby'
+__DEVENV_ALIASES[bundle]='__devenv_docker_dev_img_run bundle'
+__DEVENV_ALIASES[gem]='__devenv_docker_dev_img_run gem'
+__DEVENV_ALIASES[rspec]='__devenv_docker_dev_img_run rspec'
+__DEVENV_ALIASES[rails]='__devenv_docker_dev_img_run rails'
+__DEVENV_ALIASES[server]='__devenv_docker_dev_img_run rails server -p 4000 -b 0.0.0.0'

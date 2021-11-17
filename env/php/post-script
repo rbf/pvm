@@ -1,4 +1,0 @@
-__devenv_print_and_run_command php --version || return $?
-echo
-
-devenv_aliases[php]='__devenv_docker_dev_img_run php'

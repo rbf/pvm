@@ -1,4 +1,4 @@
-export __DEVENV_BASE_IMAGE_VERSION="8.0.12"
+__DEVENV_BASE_IMAGE_VERSION="8.0.12"
 
 __DEVENV_GET_STARTED_URL='https://www.php.net/manual/en/getting-started.php'
 
@@ -6,3 +6,6 @@ __DEVENV_GET_STARTED_URL='https://www.php.net/manual/en/getting-started.php'
 __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo '<?php\\\\necho \"<<HELLOWORLDTEXT>>\\\\\\\\n\";' > hello.php")
 __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("php hello.php")
 
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('php --version')
+
+__DEVENV_ALIASES[php]='__devenv_docker_dev_img_run php'

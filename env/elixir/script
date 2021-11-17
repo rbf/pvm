@@ -1,0 +1,17 @@
+__DEVENV_BASE_IMAGE_VERSION="1.12.3-alpine"
+__DEVENV_SECONDARY_NAME="Phoenix"
+__DEVENV_SECONDARY_VERSION="1.6.2"
+__DEVENV_PORT="4000"
+
+__DEVENV_GET_STARTED_URL='https://elixir-lang.org/getting-started/introduction.html'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo 'IO.puts(\"<<HELLOWORLDTEXT>>\")' > hello-world.exs")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("elixir hello-world.exs")
+
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('elixir --version')
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('mix phx.new --version')
+
+__DEVENV_ALIASES[elixir]='__devenv_docker_dev_img_run elixir'
+__DEVENV_ALIASES[mix]='__devenv_docker_dev_img_run mix'
+__DEVENV_ALIASES[iex]='__devenv_docker_dev_img_run iex'
+__DEVENV_ALIASES[escript]='__devenv_docker_dev_img_run escript'

@@ -1,0 +1,21 @@
+__DEVENV_BASE_IMAGE_VERSION="1.17.3-bullseye"
+
+__DEVENV_GET_STARTED_URL='https://golang.org/doc/tutorial/getting-started'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('go mod init example/hello')
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("cat << EOF > hello.go
+package main
+
+import \"fmt\"
+
+func main() {
+    fmt.Println(\"<<HELLOWORLDTEXT>>\")
+}
+EOF")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('go run .')
+
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('go version')
+
+__DEVENV_ALIASES[go]='__devenv_docker_dev_img_run go'
+# DOC: 16nov2021 https://golang.org/doc/install/source#environment
+__DEVENV_ALIASES[build_for_macos]='__devenv_docker_dev_img_run env GOOS=darwin GOARCH=amd64 go build'

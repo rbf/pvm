@@ -1,0 +1,13 @@
+__DEVENV_BASE_IMAGE_VERSION='1.56.1'
+
+__DEVENV_GET_STARTED_URL='https://www.rust-lang.org/learn/get-started'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('cargo init')
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('cargo run')
+
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('cargo --version')
+
+__DEVENV_ALIASES[cargo]='__devenv_docker_dev_img_run cargo'
+__DEVENV_ALIASES[rustc]='__devenv_docker_dev_img_run rustc'
+__DEVENV_ALIASES[rustdoc]='__devenv_docker_dev_img_run rustdoc'
+__DEVENV_ALIASES[rustfmt]='__devenv_docker_dev_img_run rustfmt'

@@ -1,27 +1,12 @@
 # This file is to be sourced with devenv.
 
-# Usage:  docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
-#
-# Run a command in a new container
-#
-#   -d, --detach             Run container in background and print container ID
-#   -e, --env list           Set environment variables
-#   -i, --interactive        Keep STDIN open even if not attached
-#   -p, --publish list       Publish a container's port(s) to the host
-#   -t, --tty                Allocate a pseudo-TTY
-#   --rm                     Automatically remove the container when it exits
-#   --name string            Assign a name to the container
-#   --restart string         Restart policy to apply when a container exits (default "no")
-#   -h, --hostname string    Container host name
-#   -v, --volume list        Bind mount a volume
-
 if [[ "${SHELL}" != '/bin/zsh' ]]; then
-  echo "This script is mean to be sourced on a zsh shell."
+  echo "ERROR: This script is mean to be sourced on a zsh shell." 1>&2
   return 1
 fi
 
 function __devenv_echo_success() { print -P "%F{2}SUCCESS${*+: }${*}%f" }
-function __devenv_echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" }
+function __devenv_echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" 1>&2 }
 function __devenv_slugify() {
   echo $(if [ -p /dev/stdin ]; then cat -; else echo "${*}"; fi) \
      | tr -sc '[:alnum:]' '-' \
@@ -29,6 +14,18 @@ function __devenv_slugify() {
      | tr -dc '[:alnum:]-' \
      | tr '[:upper:]' '[:lower:]' \
      | sed  -e 's/^--*//' -e 's/---*/-/g' -e 's/--*$//'
+}
+
+# To be used as $(__devenv_abort "error message") so that it can effectively
+# return from sourcing this file. Note that it does only work from the top
+# script level, not from within functions. We cannot use 'exit 1' as this file
+# is being sourced, not executed. Alternatively we could abuse the ? expansion
+# parameter and the fact that there is not ENV var called ERROR to write
+# ${ERROR?error message}, which would give us the line number as well. But is
+# less user friendly. It would be useful for dev errors.
+function __devenv_abort() {
+  __devenv_echo_error "${@%.}. Aborting setup."
+  print 'return 1'
 }
 
 export __DEVENV_DEV_SETUP_SCRIPT_FULL_PATH="${0:A}"
@@ -48,7 +45,22 @@ if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
   return 1
 fi
 
-source "${__DEVENV_TARGET_DIR}/pre-script"
+declare -a __DEVENV_COMMANDS_TO_RUN_AT_THE_END
+# Associative array.
+# SOURCE: 16nov2021 https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
+declare -A __DEVENV_ALIASES
+
+function __devenv_after_docker_dev_img_start() {
+  # Override this function in ${__DEVENV_TARGET_DIR}/script if there is some setup needed after the container is started.
+}
+
+if ! source "${__DEVENV_TARGET_DIR}/script"; then
+  $(__devenv_abort "Unable to source '${__DEVENV_TARGET_DIR}/script'.")
+fi
+
+if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
+  $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after sourcing '${__DEVENV_TARGET_DIR}/script'")
+fi
 
 export __DEVENV_PORT="${__DEVENV_PORT:-4001}"
 
@@ -57,7 +69,6 @@ export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="devenv-image-${__DEVENV_TARGET}:${__D
 if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
   __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_slugify ${__DEVENV_SECONDARY_NAME})-v${__DEVENV_SECONDARY_VERSION}"
 fi
-
 
 function __devenv_check_docker_available_and_running() {
   if ! which docker 1>/dev/null; then
@@ -123,7 +134,21 @@ function __devenv_docker_dev_img_start() {
     return 1
   fi
 
-  __DEVENV_TARGET_COINTAINER_SHORT_ID="$(docker run \
+  # Usage:  docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
+  #
+  # Run a command in a new container
+  #
+  #   -d, --detach             Run container in background and print container ID
+  #   -e, --env list           Set environment variables
+  #   -i, --interactive        Keep STDIN open even if not attached
+  #   -p, --publish list       Publish a container's port(s) to the host
+  #   -t, --tty                Allocate a pseudo-TTY
+  #   --rm                     Automatically remove the container when it exits
+  #   --name string            Assign a name to the container
+  #   --restart string         Restart policy to apply when a container exits (default "no")
+  #   -h, --hostname string    Container host name
+  #   -v, --volume list        Bind mount a volume
+  __DEVENV_TARGET_COINTAINER_SHORT_ID="$(set -o pipefail; docker run \
           --detach \
           --restart=unless-stopped \
           --publish "${__DEVENV_PORT}:${__DEVENV_PORT}" \
@@ -131,7 +156,7 @@ function __devenv_docker_dev_img_start() {
           --hostname "${__DEVENV_TARGET_COINTAINER_NAME}" \
           --volume "${__DEVENV_APP_ROOT_DIR}:/home/dev" \
           "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
-          tail -f /dev/null | head -c 7)"
+          tail -f /dev/null | head -c 7; exit $?)" || return 1
   print "Started docker container '${__DEVENV_TARGET_COINTAINER_NAME}'" \
         "(id ${__DEVENV_TARGET_COINTAINER_SHORT_ID}) for devenv target '${__DEVENV_TARGET}'" \
         "and port ${__DEVENV_PORT} open."
@@ -175,12 +200,9 @@ function __devenv_print_and_run_command() {
   __devenv_docker_dev_img_run "${@}"
 }
 
-# SOURCE: 16nov2021 https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
-declare -A devenv_aliases
-
-devenv_aliases[devenv_container]='__devenv_docker_dev_img_run /bin/bash'
-
-__devenv_docker_dev_img_start || return $?
+if ! __devenv_docker_dev_img_start; then
+  $(__devenv_abort "Unable to start the docker container")
+fi
 
 # Use list trap instead of the function trap TRAPEXIT() because it does not get
 # inherited by subshells. From the doc: "Function traps are not reset within
@@ -192,17 +214,32 @@ trap '
   docker rm --force "${__DEVENV_TARGET_COINTAINER_NAME}"
 ' EXIT
 
-source "${__DEVENV_TARGET_DIR}/post-script"
+__devenv_after_docker_dev_img_start
 
-for alias_name alias_command in ${(kv)devenv_aliases}; do
+for command_at_the_end in ${__DEVENV_COMMANDS_TO_RUN_AT_THE_END[@]}; do
+  # (z) Split the result of the expansion into words
+  # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
+  if __devenv_print_and_run_command "${(z)command_at_the_end}"; then
+    echo
+  else
+    $(__devenv_abort "Execution of '${command_at_the_end}' failed")
+  fi
+done
+unset command_at_the_end
+
+__DEVENV_ALIASES[devenv_container]='__devenv_docker_dev_img_run /bin/bash'
+
+for alias_name alias_command in ${(kv)__DEVENV_ALIASES}; do
   alias ${alias_name}="${alias_command}"
 done
+unset alias_name alias_command
 
 print "You have now following commands available in this shell session:"
 print
-for alias_name in $(print -o ${(k)devenv_aliases}); do
+for alias_name in $(print -o ${(k)__DEVENV_ALIASES}); do
   print -- "  - ${alias_name}"
 done
+unset alias_name
 print
 
 print "A quick way to hello world in ${__DEVENV_TARGET}:"
@@ -210,6 +247,7 @@ print
 for line in ${__DEVENV_HOW_TO_HELLO_WORLD_LINES[@]?Missing}; do
   print -- "  $ ${line}" | sed "s/<<HELLOWORLDTEXT>>/Hello, world!/"
 done
+unset line
 print
 
 print "For more information about getting started with ${__DEVENV_TARGET} visit:"
@@ -227,7 +265,10 @@ unset -f __devenv_docker_get_dockerfile_hash
 unset -f __devenv_echo_success
 unset -f __devenv_echo_error
 unset -f __devenv_slugify
+unset -f __devenv_abort
 unset -f __devenv_docker_image_title
-unset devenv_aliases
+unset -f __devenv_after_docker_dev_img_start
+unset __DEVENV_COMMANDS_TO_RUN_AT_THE_END
+unset __DEVENV_ALIASES
 unset __DEVENV_GET_STARTED_URL
 unset __DEVENV_HOW_TO_HELLO_WORLD_LINES

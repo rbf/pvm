@@ -1,9 +1,0 @@
-export __DEVENV_BASE_IMAGE_VERSION="1.12.3-alpine"
-export __DEVENV_SECONDARY_NAME="Phoenix"
-export __DEVENV_SECONDARY_VERSION="1.6.2"
-export __DEVENV_PORT="4000"
-
-__DEVENV_GET_STARTED_URL='https://elixir-lang.org/getting-started/introduction.html'
-
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo 'IO.puts(\"<<HELLOWORLDTEXT>>\")' > hello-world.exs")
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("elixir hello-world.exs")

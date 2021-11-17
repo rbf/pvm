@@ -1,6 +1,0 @@
-__devenv_print_and_run_command go version || return $?
-echo
-
-devenv_aliases[go]='__devenv_docker_dev_img_run go'
-# DOC: 16nov2021 https://golang.org/doc/install/source#environment
-devenv_aliases[build_for_macos]='__devenv_docker_dev_img_run env GOOS=darwin GOARCH=amd64 go build'

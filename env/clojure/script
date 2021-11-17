@@ -1,0 +1,18 @@
+__DEVENV_BASE_IMAGE_VERSION="openjdk-18-tools-deps-1.10.3.1020-bullseye"
+__DEVENV_SECONDARY_NAME="lein"
+__DEVENV_SECONDARY_VERSION="2.9.1"
+__DEVENV_PORT="3000"
+
+__DEVENV_GET_STARTED_URL='https://clojure.org/guides/getting_started'
+
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo '(println \"<<HELLOWORLDTEXT>>\")' > hello-world.clj")
+__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("clj -M hello-world.clj")
+
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('java -version')
+# SOURCE: 16nov2021 https://github.com/clojure-emacs/cider/commit/37acd50
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('clojure --version')
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('lein --version')
+
+__DEVENV_ALIASES[java]='__devenv_docker_dev_img_run java'
+__DEVENV_ALIASES[clj]='__devenv_docker_dev_img_run clojure'
+__DEVENV_ALIASES[lein]='__devenv_docker_dev_img_run lein'

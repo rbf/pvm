@@ -1,8 +1,0 @@
-__devenv_print_and_run_command node --version || return $?
-echo
-
-__devenv_print_and_run_command npm --version || return $?
-echo
-
-devenv_aliases[node]='__devenv_docker_dev_img_run node'
-devenv_aliases[npm]='__devenv_docker_dev_img_run npm'

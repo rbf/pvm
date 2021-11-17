@@ -1,7 +1,0 @@
-__devenv_print_and_run_command cargo --version || return $?
-echo
-
-devenv_aliases[cargo]='__devenv_docker_dev_img_run cargo'
-devenv_aliases[rustc]='__devenv_docker_dev_img_run rustc'
-devenv_aliases[rustdoc]='__devenv_docker_dev_img_run rustdoc'
-devenv_aliases[rustfmt]='__devenv_docker_dev_img_run rustfmt'
