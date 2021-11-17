@@ -82,11 +82,11 @@ function list() {
       exit_with_error "Unable to parse available versions from '${1}/versions'."
     fi
     local env_name="$(basename ${__devenv_env})"
-    local env_default_version="${__DEVENV_TARGET_VERSIONS[0]}"
+    local env_default_version="$(echo ${__DEVENV_TARGET_VERSIONS[0]} | grep -oE '\d+\.\d+\.\d+')"
 
     if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[0]}" ]; then
       local secondary_name="$(grep '__DEVENV_SECONDARY_NAME' "${__devenv_env}/script" | cut -f 2 -d '=' | tr -d '"'"'")"
-      print "${env_name}|${env_default_version}|(with ${secondary_name} ${__DEVENV_TARGET_SECONDARY_VERSIONS[0]})"
+      print "${env_name}|${env_default_version}|with ${secondary_name} ${__DEVENV_TARGET_SECONDARY_VERSIONS[0]}"
     else
       print "${env_name}|${env_default_version}"
     fi
