@@ -262,11 +262,10 @@ __devenv_after_docker_dev_img_start
 for command_at_the_end in ${__DEVENV_COMMANDS_TO_RUN_AT_THE_END[@]}; do
   # (z) Split the result of the expansion into words
   # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
-  if __devenv_print_and_run_command "${(z)command_at_the_end}"; then
-    echo
-  else
-    $(__devenv_abort "Execution of '${command_at_the_end}' failed")
+  if ! __devenv_print_and_run_command "${(z)command_at_the_end}"; then
+    __devenv_echo_error "Execution of '${command_at_the_end}' failed"
   fi
+  echo
 done
 unset command_at_the_end
 
