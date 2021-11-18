@@ -115,7 +115,7 @@ function list() {
 
   function parse_env_versions() {
     unset image_tags tool_versions
-    if ! versions="$(set -o pipefail; cat "${1}/versions" | grep -v '#')"; then
+    if ! versions="$(set -o pipefail; cat "${1}/versions" | sed '/^\s*#/d;/^$/d')"; then
       exit_with_error "Unable to parse available versions from '${1}/versions'."
     fi
     # (f) Split the result of the expansion at newlines.
