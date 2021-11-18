@@ -9,7 +9,7 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("ruby hello_world.rb")
 function __devenv_after_docker_dev_img_start() {
   if ! [ -f '.bundle/global/bin/rails' ]; then
     mkdir -p .bundle || return $?
-    print 'Copying preinstalled gems into .bundle'
+    print "Copying preinstalled gems into '.bundle' dir..."
     __devenv_docker_dev_img_run cp -R /home/preinstalled-gems /home/dev/.bundle/global
     echo
   fi

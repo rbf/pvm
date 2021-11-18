@@ -24,7 +24,6 @@ RUN set -xe \
       && apt install -y nodejs npm git curl \
       && npm install --global yarn \
       && echo "alias la='ls -la'" >> /etc/bash.bashrc \
-      && echo 'PATH="/home/dev/.bundle/bin:/home/dev/.bundle/global/bin:/home/preinstalled-gems/bin:${PATH}"' >> /etc/bash.bashrc \
       && git config --global init.defaultBranch main \
       && gem install --install-dir /home/preinstalled-gems bundler:'~>2.0' || true \
       && gem install --install-dir /home/preinstalled-gems bundler:'~>1.0' \
