@@ -46,7 +46,7 @@ if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
 fi
 
 function __devenv_parse_available_versions() {
-  versions="$(set -o pipefail; cat "${__DEVENV_TARGET_DIR}/versions" | grep -v '#')" || return
+  versions="$(set -o pipefail; cat "${__DEVENV_TARGET_DIR}/versions" | sed '/^\s*#/d;/^$/d')" || return
   # (f) Split the result of the expansion at newlines.
   # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
   for version in "${(f)versions}"; do
@@ -86,7 +86,7 @@ if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
   $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after sourcing '${__DEVENV_TARGET_DIR}/script'")
 fi
 
-export __DEVENV_PORT="${__DEVENV_PORT:-4001}"
+export __DEVENV_PORT="${__DEVENV_PORT:-4000}"
 
 export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="devenv-image-${__DEVENV_TARGET}:${__DEVENV_BASE_IMAGE_VERSION}"
 
