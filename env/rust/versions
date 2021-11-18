@@ -1,3 +1,16 @@
 # Available Docker Image tags from https://hub.docker.com/_/rust
 # The top line is the default version.
-1.56.1
+1.56.1-bullseye
+1.55.0-bullseye
+1.54.0-buster
+1.53.0-buster
+1.52.1-buster
+1.51.0-buster
+1.50.0-buster
+1.49.0-buster
+1.48.0-buster
+1.47.0-buster
+1.46.0-buster
+1.45.2-buster
+1.44.1-buster
+1.43.1-buster

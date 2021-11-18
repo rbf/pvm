@@ -29,4 +29,4 @@ __DEVENV_ALIASES[bundle]='__devenv_docker_dev_img_run bundle'
 __DEVENV_ALIASES[gem]='__devenv_docker_dev_img_run gem'
 __DEVENV_ALIASES[rspec]='__devenv_docker_dev_img_run rspec'
 __DEVENV_ALIASES[rails]='__devenv_docker_dev_img_run rails'
-__DEVENV_ALIASES[server]='__devenv_docker_dev_img_run rails server -p 4000 -b 0.0.0.0'
+__DEVENV_ALIASES[serve]="__devenv_docker_dev_img_run rails server -p ${__DEVENV_PORT} -b 0.0.0.0"

@@ -21,11 +21,13 @@ ARG SECONDARY_VERSION
 # DOC: https://wiki.alpinelinux.org/wiki/How_to_get_regular_stuff_working
 RUN set -xe \
       && apt update -y \
-      && apt install -y nodejs npm \
+      && apt install -y nodejs npm git curl \
       && npm install --global yarn \
       && echo "alias la='ls -la'" >> /etc/bash.bashrc \
       && echo 'PATH="/home/dev/.bundle/bin:/home/dev/.bundle/global/bin:/home/preinstalled-gems/bin:${PATH}"' >> /etc/bash.bashrc \
       && git config --global init.defaultBranch main \
-      && gem install --install-dir /home/preinstalled-gems rails:${SECONDARY_VERSION} rubocop
+      && gem install --install-dir /home/preinstalled-gems bundler:'~>2.0' || true \
+      && gem install --install-dir /home/preinstalled-gems bundler:'~>1.0' \
+      && gem install --install-dir /home/preinstalled-gems rails:${SECONDARY_VERSION}
 
 CMD ["/bin/bash", "-l"]

@@ -1,3 +1,7 @@
 # Available Docker Image tags from https://hub.docker.com/_/node
 # The top line is the default version.
-17.1.0-alpine3.13
+17.1.0-alpine3.14
+16.13.0-alpine3.14
+15.14.0-alpine3.13
+14.18.1-alpine3.14
+
