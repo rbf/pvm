@@ -271,10 +271,10 @@ for command_at_the_end in ${__DEVENV_COMMANDS_TO_RUN_AT_THE_END[@]}; do
 done
 unset command_at_the_end
 
-__DEVENV_ALIASES[devenv_container]='__devenv_docker_dev_img_run /bin/bash'
+__DEVENV_ALIASES[devenv_container]='/bin/bash'
 
 for alias_name alias_command in ${(kv)__DEVENV_ALIASES}; do
-  alias ${alias_name}="${alias_command}"
+  alias ${alias_name}="__devenv_docker_dev_img_run ${alias_command}"
 done
 unset alias_name alias_command
 

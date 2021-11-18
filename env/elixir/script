@@ -9,7 +9,7 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("elixir hello-world.exs")
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('elixir --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('mix phx.new --version')
 
-__DEVENV_ALIASES[elixir]='__devenv_docker_dev_img_run elixir'
-__DEVENV_ALIASES[mix]='__devenv_docker_dev_img_run mix'
-__DEVENV_ALIASES[iex]='__devenv_docker_dev_img_run iex'
-__DEVENV_ALIASES[escript]='__devenv_docker_dev_img_run escript'
+__DEVENV_ALIASES[elixir]='elixir'
+__DEVENV_ALIASES[mix]='mix'
+__DEVENV_ALIASES[iex]='iex'
+__DEVENV_ALIASES[escript]='escript'

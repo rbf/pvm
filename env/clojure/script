@@ -11,6 +11,6 @@ __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('java -version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('clojure --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('lein --version')
 
-__DEVENV_ALIASES[java]='__devenv_docker_dev_img_run java'
-__DEVENV_ALIASES[clj]='__devenv_docker_dev_img_run clojure'
-__DEVENV_ALIASES[lein]='__devenv_docker_dev_img_run lein'
+__DEVENV_ALIASES[java]='java'
+__DEVENV_ALIASES[clj]='clojure'
+__DEVENV_ALIASES[lein]='lein'

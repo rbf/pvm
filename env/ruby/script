@@ -24,9 +24,9 @@ __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('ruby --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('bundle --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('rails --version')
 
-__DEVENV_ALIASES[ruby]='__devenv_docker_dev_img_run ruby'
-__DEVENV_ALIASES[bundle]='__devenv_docker_dev_img_run bundle'
-__DEVENV_ALIASES[gem]='__devenv_docker_dev_img_run gem'
-__DEVENV_ALIASES[rspec]='__devenv_docker_dev_img_run rspec'
-__DEVENV_ALIASES[rails]='__devenv_docker_dev_img_run rails'
-__DEVENV_ALIASES[serve]="__devenv_docker_dev_img_run rails server -p ${__DEVENV_PORT} -b 0.0.0.0"
+__DEVENV_ALIASES[ruby]='ruby'
+__DEVENV_ALIASES[bundle]='bundle'
+__DEVENV_ALIASES[gem]='gem'
+__DEVENV_ALIASES[rspec]='rspec'
+__DEVENV_ALIASES[rails]='rails'
+__DEVENV_ALIASES[serve]="rails server -p ${__DEVENV_PORT} -b 0.0.0.0"

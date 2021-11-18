@@ -23,7 +23,7 @@ __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('php --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('composer --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('laravel --version')
 
-__DEVENV_ALIASES[php]='__devenv_docker_dev_img_run php'
-__DEVENV_ALIASES[composer]='__devenv_docker_dev_img_run composer'
-__DEVENV_ALIASES[laravel]='__devenv_docker_dev_img_run laravel'
-__DEVENV_ALIASES[serve]="__devenv_docker_dev_img_run php artisan serve --host=0.0.0.0 --port=${__DEVENV_PORT}"
+__DEVENV_ALIASES[php]='php'
+__DEVENV_ALIASES[composer]='composer'
+__DEVENV_ALIASES[laravel]='laravel'
+__DEVENV_ALIASES[serve]="php artisan serve --host=0.0.0.0 --port=${__DEVENV_PORT}"

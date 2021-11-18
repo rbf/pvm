@@ -14,6 +14,6 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=('go run .')
 
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('go version')
 
-__DEVENV_ALIASES[go]='__devenv_docker_dev_img_run go'
+__DEVENV_ALIASES[go]='go'
 # DOC: 16nov2021 https://golang.org/doc/install/source#environment
-__DEVENV_ALIASES[build_for_macos]='__devenv_docker_dev_img_run env GOOS=darwin GOARCH=amd64 go build'
+__DEVENV_ALIASES[build_for_macos]='env GOOS=darwin GOARCH=amd64 go build'

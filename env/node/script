@@ -8,5 +8,5 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("node hello_world.js")
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('node --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('npm --version')
 
-__DEVENV_ALIASES[node]='__devenv_docker_dev_img_run node'
-__DEVENV_ALIASES[npm]='__devenv_docker_dev_img_run npm'
+__DEVENV_ALIASES[node]='node'
+__DEVENV_ALIASES[npm]='npm'
