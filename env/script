@@ -91,7 +91,7 @@ export __DEVENV_PORT="${__DEVENV_PORT:-4001}"
 export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="devenv-image-${__DEVENV_TARGET}:${__DEVENV_BASE_IMAGE_VERSION}"
 
 if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-  __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_slugify ${__DEVENV_SECONDARY_NAME})-v${__DEVENV_SECONDARY_VERSION}"
+  __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_slugify ${__DEVENV_SECONDARY_NAME})-${__DEVENV_SECONDARY_VERSION}"
 fi
 
 function __devenv_check_docker_available_and_running() {
@@ -105,11 +105,13 @@ function __devenv_check_docker_available_and_running() {
 }
 
 function __devenv_docker_image_title() {
+  local __DEVENV_ENV_VERSION="$(echo "${__DEVENV_BASE_IMAGE_VERSION}" | grep -oE '\d+\.\d+\.\d+')"
   if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-    print "devenv image with ${__DEVENV_TARGET} v${__DEVENV_BASE_IMAGE_VERSION} and ${__DEVENV_SECONDARY_NAME} v${__DEVENV_SECONDARY_VERSION}."
+    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION} and ${__DEVENV_SECONDARY_NAME} ${__DEVENV_SECONDARY_VERSION}."
   else
-    print "devenv image with ${__DEVENV_TARGET} v${__DEVENV_BASE_IMAGE_VERSION}."
+    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}."
   fi
+  unset __DEVENV_ENV_VERSION
 }
 
 function __devenv_docker_build_image() {
