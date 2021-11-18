@@ -189,9 +189,28 @@ function __devenv_docker_dev_img_start() {
 }
 
 function __devenv_docker_dev_img_run() {
+  if ! [[ "${PWD}" =~ "^${__DEVENV_APP_ROOT_DIR}" ]]; then
+    __devenv_echo_error "Outside of the devnenv folder tree at '${__DEVENV_APP_ROOT_DIR}'."
+    return 1
+  fi
+  # Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
+  #
+  # Run a command in a running container
+  #
+  # Options:
+  #   -d, --detach               Detached mode: run command in the background
+  #       --detach-keys string   Override the key sequence for detaching a container
+  #   -e, --env list             Set environment variables
+  #       --env-file list        Read in a file of environment variables
+  #   -i, --interactive          Keep STDIN open even if not attached
+  #       --privileged           Give extended privileges to the command
+  #   -t, --tty                  Allocate a pseudo-TTY
+  #   -u, --user string          Username or UID (format: <name|uid>[:<group|gid>])
+  #   -w, --workdir string       Working directory inside the container
   docker exec \
       --interactive \
       --tty \
+      --workdir "${PWD/${__DEVENV_APP_ROOT_DIR}//home/dev}" \
       "${__DEVENV_TARGET_COINTAINER_NAME}" \
       "${@}"
 }
@@ -287,7 +306,6 @@ unset -f __devenv_docker_build_image
 unset -f __devenv_docker_dockerfile_unmodified_since_last_build
 unset -f __devenv_docker_get_dockerfile_hash
 unset -f __devenv_echo_success
-unset -f __devenv_echo_error
 unset -f __devenv_slugify
 unset -f __devenv_abort
 unset -f __devenv_docker_image_title
