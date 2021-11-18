@@ -37,9 +37,12 @@ Available commands:
 
   list                List available environments.
 
-      --all, -a             List all versions for each enviorment.
+      --all, -a             List all versions for each enviorment. Without this flag only the
+                            default version for each environment is listed.
       --filter, -f string   List only the environments matching the given string.
       --verbose, -v         Include headers and base Docker image tag.
+      --color, --no-color   Force or disable color formating. By default, on when sdtout is terminal
+                            and off otherwise.
       --porcelain           Format in a machine readable way (i.e. csv).
 
   open string         Opens a new tmux window with the tools for the 'string' env.
@@ -82,9 +85,18 @@ function list() {
   local is_porcelain=false
   local is_verbose=false
   local is_print_all_versions=false
+  local is_color_enabled=${is_sdtout_to_terminal}
   local filter_pattern='.*'
   while (( # > 0 )); do
     case "${1}" in
+      --color )
+        shift
+        is_color_enabled=true
+        ;;
+      --no-color )
+        shift
+        is_color_enabled=false
+        ;;
       --porcelain )
         shift
         is_porcelain=true
@@ -132,39 +144,74 @@ function list() {
     $is_verbose && print -n "${image_tags[${i}]}${1}"
   }
 
-  function tool_name() {
-    grep '__DEVENV_SECONDARY_NAME' "${env_dir}/script" | cut -f 2 -d '=' | tr -d '"'"'" || print -- "${1}"
+  function get_fg_for() {
+    field="${1}"
+    prev_field="prev_${1}"
+    fg_field="fg_${1}"
+    if [ "${(P)field}" = "${(P)prev_field}" ]; then
+      typeset -g "${fg_field}=8"
+    else
+      typeset -g "${fg_field}=15"
+    fi
+    typeset -g "${prev_field}=${(P)field}"
+  }
+
+  function row_colored() {
+    get_fg_for env_name
+    get_fg_for env_version
+    get_fg_for tool_name
+    get_fg_for tool_version
+    get_fg_for image_tag
+    print -Pn "|%B%F{${fg_env_name}}${env_name}%f%b" \
+              "|%B%F{${fg_env_version}}${env_version}%f%b|"
+    if $is_verbose; then
+      print -P -- "%F{${fg_tool_name}}${tool_name:--}%f" \
+                  "|%F{${fg_tool_version}}${tool_version:--}%f" \
+                  "|%F{${fg_image_tag}}${image_tag}%f"
+    else
+      print -P -- "%F{${fg_tool_name}}${tool_name}%f %F{${fg_tool_version}}${tool_version}%f"
+    fi
+  }
+
+  function row_not_colored() {
+    print -n "|${env_name}|${env_version}|"
+    if $is_verbose; then
+      print -- "${tool_name:--}|${tool_version:--}|${image_tag}"
+    else
+      print -- "${tool_name} ${tool_version}"
+    fi
   }
 
   function env_version() {
     echo "${image_tags[${i}]}" | grep -oE '\d+\.\d+\.\d+'
   }
 
-  function list_all() {
+  function list_human_friendly() {
     for (( i = 0; i < ${#image_tags[@]}; i++ )); do
+      env_version="$(env_version)"
+      tool_version="${tool_versions[i]}"
+      image_tag="$(image_tag)"
       if ((i == 0)); then
         print -n "*"
       else
         print -n " "
       fi
-      print -n "|${env_name}|$(env_version)|"
-      if $is_verbose; then
-        print -- "$(tool_name '-')|${tool_versions[i]:--}|$(image_tag)"
-      else
-        print -- "$(tool_name) ${tool_versions[i]}"
-      fi
+      $is_color_enabled && row_colored || row_not_colored
     done
   }
 
   function list_porcelain() {
     for (( i = 0; i < ${#image_tags[@]}; i++ )); do
-      print "${env_name};$(env_version);$(tool_name);${tool_versions[${i}]};$(image_tag ';')"
+      print "${env_name};$(env_version);${tool_name};${tool_versions[${i}]};$(image_tag ';')"
     done
   }
 
   if $is_verbose; then
     if $is_porcelain; then
       print "env;env version;tool;tool version;docker image tag;"
+    elif $is_color_enabled; then
+      print -P " |%B%F{15}Env%f%b|%B%F{15}Env Version%f%b|%F{15}Tool%f|%F{15}Tool Version%f|%F{15}Base Docker Image%f"
+      print -P -- " |%B%F{15}-----------%f%b|%B%F{15}-----------%f%b|%F{15}-----------%f|%F{15}-----------%f|%F{15}-----------%f"
     else
       print " |Env|Env Version|Tool|Tool Version|Base Docker Image"
       print -- " |-----------|-----------|-----------|-----------|-----------"
@@ -174,9 +221,12 @@ function list() {
   find "${DEVENV_DIR}/env" -type d -mindepth 1 -maxdepth 1 | sort | while read env_dir; do
     parse_env_versions "${env_dir}"
     env_name="$(basename ${env_dir})"
-    $is_porcelain && list_porcelain || list_all | grep -- "${filter_pattern}"
+    prev_env_name=""
+    tool_name="$(grep '__DEVENV_SECONDARY_NAME' "${env_dir}/script" | cut -f 2 -d '=' | tr -d '"'"'")"
+    prev_tool_name=""
+    { $is_porcelain && list_porcelain || list_human_friendly } | grep -- "${filter_pattern}"
   done
-  unset env_dir env_name
+  unset env_dir env_name prev_env_name
 }
 
 function check_available_target_env_or_exit() {
@@ -245,6 +295,12 @@ function parse_commands_and_options() {
   done
   print_help
 }
+
+if [ -t 1 ]; then
+  is_sdtout_to_terminal='true'
+else
+  is_sdtout_to_terminal='false'
+fi
 
 parse_commands_and_options "${@}"  | less -FRXK
 
