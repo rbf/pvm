@@ -1,3 +1,4 @@
+__DEVENV_SECONDARY_NAME="npm"
 __DEVENV_PORT="3000"
 
 __DEVENV_GET_STARTED_URL='https://nodejs.org/en/docs/guides/getting-started-guide/'
@@ -6,7 +7,11 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo 'console.log(\"<<HELLOWORLDTEXT>>\")' 
 __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("node hello_world.js")
 
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('node --version')
+__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('nodemon --version')
 __DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('npm --version')
 
 __DEVENV_ALIASES[node]='node'
+__DEVENV_ALIASES[nodemon]='nodemon'
 __DEVENV_ALIASES[npm]='npm'
+__DEVENV_ALIASES[npx]='npx'
+
