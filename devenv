@@ -141,7 +141,7 @@ function list() {
   }
 
   function image_tag() {
-    $is_verbose && print -n "${image_tags[${i}]}${1}"
+    $is_verbose && print -n "${env_name}:${image_tags[${i}]}${1}"
   }
 
   function get_fg_for() {
