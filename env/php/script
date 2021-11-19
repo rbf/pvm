@@ -8,13 +8,14 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo '<?php\\\\necho \"<<HELLOWORLDTEXT>>\\
 __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("php hello.php")
 
 function __devenv_after_docker_dev_img_start() {
-  if ! [ -f '.composer/vendor/bin/laravel' ]; then
-    if [ -d .composer ]; then
-      __devenv_echo_error "'.composer' directory is present but 'laravel' executable is missing. Something went wrong."
+  if ! [ -f "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer/vendor/bin/laravel" ]; then
+    if [ -d "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer" ]; then
+      __devenv_echo_error "'${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer' directory is present but 'laravel' executable is missing. Something went wrong. Exit and relaunch the env setup."
       return 1
     fi
-    print "Copying preinstalled packagers into '.composer' directory..."
-    __devenv_docker_dev_img_run cp -R /home/preinstalled/.composer/ /home/dev/.composer
+    print "Copying preinstalled packages into '.composer' directory..."
+    __devenv_docker_dev_img_exec mkdir -p "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}"
+    __devenv_docker_dev_img_exec cp -R /home/preinstalled/.composer/ "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.composer"
     echo
   fi
 }

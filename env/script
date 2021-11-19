@@ -28,17 +28,24 @@ function __devenv_abort() {
   print 'return 1'
 }
 
-export __DEVENV_DEV_SETUP_SCRIPT_FULL_PATH="${0:A}"
-export __DEVENV_APP_SETUP_DIR="$(dirname "${__DEVENV_DEV_SETUP_SCRIPT_FULL_PATH}")"
-export __DEVENV_APP_ROOT_DIR="$(pwd)"
-
 if ! [ -n "${__DEVENV_TARGET}" ]; then
   __devenv_echo_error "Missing __DEVENV_TARGET env var."
   return 1
 fi
 
-export __DEVENV_TARGET_COINTAINER_NAME="${__DEVENV_TARGET}-devenv-ctr"
-export __DEVENV_TARGET_DIR="${__DEVENV_APP_SETUP_DIR}/${__DEVENV_TARGET}"
+export __DEVENV_ENV_SCRIPT_FULL_PATH="${0:A}"
+export __DEVENV_ENV_DIR_FULL_PATH="$(dirname "${__DEVENV_ENV_SCRIPT_FULL_PATH}")"
+export __DEVENV_APP_ROOT_DIR_FULL_PATH="$(pwd)"
+export __DEVENV_APP_ROOT_DIRNAME="$(basename "${__DEVENV_APP_ROOT_DIR_FULL_PATH}")"
+export __DEVENV_ENV_OS
+
+export __DEVENV_TOOL_NAME='devenv'
+
+export __DEVENV_CONTAINER_USER="${__DEVENV_TOOL_NAME}"
+export __DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH="/home/${__DEVENV_CONTAINER_USER}/host"
+
+export __DEVENV_TARGET_COINTAINER_NAME="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}-ctr"
+export __DEVENV_TARGET_DIR="${__DEVENV_ENV_DIR_FULL_PATH}/${__DEVENV_TARGET}"
 
 if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
   __devenv_echo_error "Target dir '${__DEVENV_TARGET_DIR}' not found."
@@ -57,9 +64,11 @@ function __devenv_parse_available_versions() {
 }
 
 declare -a __DEVENV_COMMANDS_TO_RUN_AT_THE_END
+
 # Associative array.
 # SOURCE: 16nov2021 https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
 declare -A __DEVENV_ALIASES
+declare -A __DEVENV_ALIASES_AS_ROOT
 
 function __devenv_after_docker_dev_img_start() {
   # Override this function in ${__DEVENV_TARGET_DIR}/script if there is some setup needed after the container is started.
@@ -74,6 +83,11 @@ if ! __devenv_parse_available_versions; then
 fi
 
 __DEVENV_BASE_IMAGE_VERSION="${__DEVENV_TARGET_VERSIONS[1]}"
+
+if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
+  $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after after parsing '${__DEVENV_TARGET_DIR}/versions'")
+fi
+
 if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
   if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}" ]; then
     __DEVENV_SECONDARY_VERSION="${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}"
@@ -82,13 +96,13 @@ if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
   fi
 fi
 
-if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
-  $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after sourcing '${__DEVENV_TARGET_DIR}/script'")
-fi
+export __DEVENV_USER_CONFIG_DIR_RELATIVE_PATH=".${__DEVENV_CONTAINER_USER}/${__DEVENV_TARGET}/${__DEVENV_BASE_IMAGE_VERSION}"
+export __DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH="${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_USER_CONFIG_DIR_RELATIVE_PATH}"
+export __DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH="${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_USER_CONFIG_DIR_RELATIVE_PATH}"
 
 export __DEVENV_PORT="${__DEVENV_PORT:-4000}"
 
-export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="devenv-image-${__DEVENV_TARGET}:${__DEVENV_BASE_IMAGE_VERSION}"
+export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}:${__DEVENV_BASE_IMAGE_VERSION}"
 
 if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
   __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_slugify ${__DEVENV_SECONDARY_NAME})-${__DEVENV_SECONDARY_VERSION}"
@@ -107,19 +121,22 @@ function __devenv_check_docker_available_and_running() {
 function __devenv_docker_image_title() {
   local __DEVENV_ENV_VERSION="$(echo "${__DEVENV_BASE_IMAGE_VERSION}" | grep -oE '\d+\.\d+\.\d+')"
   if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION} and ${__DEVENV_SECONDARY_NAME} ${__DEVENV_SECONDARY_VERSION}."
+    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION} and ${__DEVENV_SECONDARY_NAME} ${__DEVENV_SECONDARY_VERSION}"
   else
-    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}."
+    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
   fi
   unset __DEVENV_ENV_VERSION
 }
 
 function __devenv_docker_build_image() {
   __devenv_check_docker_available_and_running || return $?
-  print "Building $(__devenv_docker_image_title)"
+  print "Building $(__devenv_docker_image_title)..."
   DOCKER_SCAN_SUGGEST=false docker build \
     --network host \
     --build-arg BASE_IMAGE_VERSION=${__DEVENV_BASE_IMAGE_VERSION} \
+    --build-arg MOUNTED_APP_ROOT_DIR_FULL_PATH=${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH} \
+    --build-arg CONTAINER_USER_CONFIG_DIR_FULL_PATH=${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH} \
+    --build-arg CONTAINER_USER=${__DEVENV_CONTAINER_USER} \
     --build-arg SECONDARY_VERSION=${__DEVENV_SECONDARY_VERSION} \
     --label "org.opencontainers.image.title=${__DEVENV_TARGET} Dev Image" \
     --label "org.opencontainers.image.description=$(__devenv_docker_image_title)" \
@@ -174,27 +191,43 @@ function __devenv_docker_dev_img_start() {
   #   --restart string         Restart policy to apply when a container exits (default "no")
   #   -h, --hostname string    Container host name
   #   -v, --volume list        Bind mount a volume
-  __DEVENV_TARGET_COINTAINER_SHORT_ID="$(set -o pipefail; docker run \
+  __DEVENV_TARGET_COINTAINER_ID="$(set -o pipefail; docker run \
           --detach \
           --restart=unless-stopped \
           --publish "${__DEVENV_PORT}:${__DEVENV_PORT}" \
           --name "${__DEVENV_TARGET_COINTAINER_NAME}" \
           --hostname "${__DEVENV_TARGET_COINTAINER_NAME}" \
-          --volume "${__DEVENV_APP_ROOT_DIR}:/home/dev" \
+          --volume "${__DEVENV_APP_ROOT_DIR_FULL_PATH}:${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}" \
           "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
-          tail -f /dev/null | head -c 7; exit $?)" || return 1
-  print "Started docker container '${__DEVENV_TARGET_COINTAINER_NAME}'" \
-        "(id ${__DEVENV_TARGET_COINTAINER_SHORT_ID}) for devenv target '${__DEVENV_TARGET}'" \
-        "and port ${__DEVENV_PORT} open."
-  print "It will be automatically stopped and removed when you exit this shell session."
+          tail -f /dev/null; exit $?)" || return 1
+
+  __DEVENV_ENV_OS="$(__devenv_docker_dev_img_exec sed '/PRETTY_NAME/!d;s/[^=]*="\([^"]*\)"/\1/' /etc/os-release)"
+
+  print "Started container '${__DEVENV_TARGET_COINTAINER_NAME}' (id ${__DEVENV_TARGET_COINTAINER_ID:0:7})" \
+        "for target '${__DEVENV_TARGET}' running on ${__DEVENV_ENV_OS}." \
+        "\nThe port ${__DEVENV_PORT} is open on the container and mapped to the same port on the host." \
+        "\nThe container will be automatically stopped and removed when this shell session exits."
   print
 }
 
-function __devenv_docker_dev_img_run() {
-  if ! [[ "${PWD}" =~ "^${__DEVENV_APP_ROOT_DIR}" ]]; then
-    __devenv_echo_error "Outside of the devnenv folder tree at '${__DEVENV_APP_ROOT_DIR}'."
+function __devenv_docker_dev_img_exec() {
+  docker exec "${__DEVENV_TARGET_COINTAINER_ID}" "${@}"
+}
+
+function __devenv_docker_dev_img_exec_interactive() {
+  if ! [[ "${PWD}" =~ "^${__DEVENV_APP_ROOT_DIR_FULL_PATH}" ]]; then
+    __devenv_echo_error "Outside of the devnenv folder tree at '${__DEVENV_APP_ROOT_DIR_FULL_PATH}'."
     return 1
   fi
+
+  local docker_user
+  if [[ "${1}" == "--as-root" ]]; then
+    shift
+    docker_user='root'
+  else
+    docker_user="${__DEVENV_CONTAINER_USER}"
+  fi
+
   # Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
   #
   # Run a command in a running container
@@ -212,28 +245,19 @@ function __devenv_docker_dev_img_run() {
   docker exec \
       --interactive \
       --tty \
-      --workdir "${PWD/${__DEVENV_APP_ROOT_DIR}//home/dev}" \
+      --user "${docker_user}" \
+      --workdir "${PWD/${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}}" \
       "${__DEVENV_TARGET_COINTAINER_NAME}" \
       "${@}"
 }
 
-function __devenv_docker_dev_img_on_demand_run() {
-  __devenv_check_docker_available_and_running || return $?
-  docker run \
-      --interactive \
-      --tty \
-      --rm \
-      --publish "${__DEVENV_PORT}:${__DEVENV_PORT}" \
-      --name "${__DEVENV_TARGET}-devenv-ctr" \
-      --hostname "${__DEVENV_TARGET}-devenv-ctr" \
-      --volume "${__DEVENV_APP_ROOT_DIR}:/home/dev" \
-      "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
-      "${@}"
+function __devenv_docker_dev_img_exec_interactive_as_root() {
+  __devenv_docker_dev_img_exec_interactive --as-root "${@}"
 }
 
 if __devenv_docker_dockerfile_unmodified_since_last_build; then
   docker image inspect \
-    --format="Image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' created on {{.Created}}" \
+    --format="Image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' exists locally. It was created on {{.Created}}." \
     "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
     2>/dev/null
 else
@@ -242,7 +266,7 @@ fi
 
 function __devenv_print_and_run_command() {
   print "$ ${@}"
-  __devenv_docker_dev_img_run "${@}"
+  __devenv_docker_dev_img_exec "${@}"
 }
 
 if ! __devenv_docker_dev_img_start; then
@@ -272,26 +296,27 @@ done
 unset command_at_the_end
 
 __DEVENV_ALIASES[devenv_container]='/bin/bash'
+__DEVENV_ALIASES_AS_ROOT[devenv_container_as_root]='/bin/bash'
 
 for alias_name alias_command in ${(kv)__DEVENV_ALIASES}; do
-  alias ${alias_name}="__devenv_docker_dev_img_run ${alias_command}"
+  alias ${alias_name}="__devenv_docker_dev_img_exec_interactive ${alias_command}"
+done
+unset alias_name alias_command
+
+for alias_name alias_command in ${(kv)__DEVENV_ALIASES_AS_ROOT}; do
+  alias ${alias_name}="__devenv_docker_dev_img_exec_interactive_as_root ${alias_command}"
 done
 unset alias_name alias_command
 
 print "You have now following commands available in this shell session:"
 print
-for alias_name in $(print -o ${(k)__DEVENV_ALIASES}); do
-  print -- "  - ${alias_name}"
-done
-unset alias_name
+print -of '  $ %s\n' ${(k)__DEVENV_ALIASES}
+print -of '  # %s\n' ${(k)__DEVENV_ALIASES_AS_ROOT}
 print
 
 print "A quick way to hello world in ${__DEVENV_TARGET}:"
 print
-for line in ${__DEVENV_HOW_TO_HELLO_WORLD_LINES[@]?Missing}; do
-  print -- "  $ ${line}" | sed "s/<<HELLOWORLDTEXT>>/Hello, world!/"
-done
-unset line
+print -f '  $ %s\n' ${__DEVENV_HOW_TO_HELLO_WORLD_LINES[@]//<<HELLOWORLDTEXT>>/Hello, world!}
 print
 
 print "For more information about getting started with ${__DEVENV_TARGET} visit:"
@@ -301,7 +326,6 @@ print
 
 unset -f __devenv_print_and_run_command
 unset -f __devenv_check_docker_available_and_running
-unset -f __devenv_docker_dev_img_on_demand_run
 unset -f __devenv_docker_dev_img_start
 unset -f __devenv_docker_build_image
 unset -f __devenv_docker_dockerfile_unmodified_since_last_build
@@ -313,5 +337,6 @@ unset -f __devenv_docker_image_title
 unset -f __devenv_after_docker_dev_img_start
 unset __DEVENV_COMMANDS_TO_RUN_AT_THE_END
 unset __DEVENV_ALIASES
+unset __DEVENV_ALIASES_AS_ROOT
 unset __DEVENV_GET_STARTED_URL
 unset __DEVENV_HOW_TO_HELLO_WORLD_LINES

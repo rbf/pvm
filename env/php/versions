@@ -3,8 +3,8 @@
 # https://laravelversions.com/en
 # https://github.com/composer/composer/releases
 # php image tags|composer versions
-8.0.12-bullseye|1.10.23
 8.0.12-bullseye|2.1.12
+8.0.12-bullseye|1.10.23
 
 7.4.26-bullseye|2.1.12
 7.4.26-bullseye|1.10.23

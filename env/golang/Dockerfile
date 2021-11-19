@@ -2,13 +2,27 @@ ARG BASE_IMAGE_VERSION
 
 FROM golang:${BASE_IMAGE_VERSION}
 
-WORKDIR /home/dev
+# Needs to be declared after the FROM clause.
+# SOURCE: 14sep2021 https://ryandaniels.ca/blog/docker-dockerfile-arg-from-arg-trouble/
+ARG MOUNTED_APP_ROOT_DIR_FULL_PATH
+ARG CONTAINER_USER
+ARG CONTAINER_USER_CONFIG_DIR_FULL_PATH
+ARG SECONDARY_VERSION
 
 # SOURCE: 16nov2021 https://www.digitalocean.com/community/tutorials/understanding-the-gopath
-ENV GOPATH="/home/dev/.gopath"
+ENV GOPATH="${CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.gopath"
+ENV PATH="${GOPATH}:${PATH}"
 
 RUN set -xe \
+      && adduser --disabled-password --gecos '' ${CONTAINER_USER} \
       && echo "alias la='ls -la'" >> /etc/bash.bashrc \
-      && echo 'PATH="${GOPATH}:${PATH}"' >> /etc/bash.bashrc
+      && echo 'uname --all' >> /etc/bash.bashrc \
+      && echo '(source /etc/os-release; echo ${PRETTY_NAME} - \(cat /etc/os-release for details\))' >> /etc/bash.bashrc \
+      && apt-get update -y \
+      && apt-get install -y make git zip unzip \
+      && apt-get clean -y \
+      && git config --global init.defaultBranch main
+
+WORKDIR ${MOUNTED_APP_ROOT_DIR_FULL_PATH}
 
 CMD ["/bin/bash", "-l"]

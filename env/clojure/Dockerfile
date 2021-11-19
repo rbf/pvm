@@ -2,22 +2,33 @@ ARG BASE_IMAGE_VERSION
 
 FROM clojure:${BASE_IMAGE_VERSION}
 
-WORKDIR /home/dev
-
-ENV LEIN_ROOT='true'
-
 # Needs to be declared after the FROM clause.
 # SOURCE: 14sep2021 https://ryandaniels.ca/blog/docker-dockerfile-arg-from-arg-trouble/
+ARG MOUNTED_APP_ROOT_DIR_FULL_PATH
+ARG CONTAINER_USER
+ARG CONTAINER_USER_CONFIG_DIR_FULL_PATH
 ARG SECONDARY_VERSION
 
-# SOURCE: 26sep2021 https://www.shellhacks.com/alpine-install-curl/
-# DOC: https://wiki.alpinelinux.org/wiki/How_to_get_regular_stuff_working
 RUN set -xe \
-      && echo "alias la='ls -la'" >> /etc/profile \
-      && git config --global init.defaultBranch main \
-      && apt update -y \
-      && curl -o /usr/bin/lein https://raw.githubusercontent.com/technomancy/leiningen/${SECONDARY_VERSION}/bin/lein \
-      && chmod a+x /usr/bin/lein \
-      && lein repl
+      && adduser --disabled-password --gecos '' ${CONTAINER_USER} \
+      && echo "alias la='ls -la'" >> /etc/bash.bashrc \
+      && echo 'uname --all' >> /etc/bash.bashrc \
+      && echo '(source /etc/os-release; echo ${PRETTY_NAME} - \(cat /etc/os-release for details\))' >> /etc/bash.bashrc \
+      && apt-get update -y \
+      && apt-get install -y make git zip unzip \
+      && apt-get clean -y \
+      && git config --global init.defaultBranch main
 
-CMD ["/bin/sh", "-l"]
+RUN set -xe \
+      && curl -o /usr/bin/lein https://raw.githubusercontent.com/technomancy/leiningen/${SECONDARY_VERSION}/bin/lein \
+      && chmod a+x /usr/bin/lein
+
+USER ${CONTAINER_USER}
+
+RUN set -xe \
+      && lein repl \
+      && clojure
+
+WORKDIR ${MOUNTED_APP_ROOT_DIR_FULL_PATH}
+
+CMD ["/bin/bash", "-l"]

@@ -14,4 +14,3 @@ __DEVENV_ALIASES[node]='node'
 __DEVENV_ALIASES[nodemon]='nodemon'
 __DEVENV_ALIASES[npm]='npm'
 __DEVENV_ALIASES[npx]='npx'
-

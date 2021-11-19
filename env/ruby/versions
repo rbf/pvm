@@ -1,18 +1,19 @@
 # Available Docker Image tags from https://hub.docker.com/_/ruby
 # The top line is the default version.
 # SOURCE: 18nov2021 https://www.ruby-lang.org/en/downloads/releases/
+# SOURCE: 18nov2021 https://rubygems.org/gems/rails/versions
 # SOURCE: 18nov2021 https://www.fastruby.io/blog/ruby/rails/versions/compatibility-table.html
 # ruby image tags|compatible Ruby on Rails versions
-3.0.2-bullseye|6.1.4
+3.0.2-bullseye|6.1.4.1
 
-2.7.4-bullseye|6.1.4
+2.7.4-bullseye|6.1.4.1
 2.7.4-bullseye|6.0.4
 
-2.6.8-bullseye|6.1.4
+2.6.8-bullseye|6.1.4.1
 2.6.8-bullseye|6.0.4
 2.6.8-bullseye|5.2.6
 
-2.5.9-buster|6.1.4
+2.5.9-buster|6.1.4.1
 2.5.9-buster|6.0.4
 2.5.9-buster|5.2.6
 2.5.9-buster|5.1.7

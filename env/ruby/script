@@ -7,12 +7,17 @@ __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo 'puts \"<<HELLOWORLDTEXT>>\"' > hello_
 __DEVENV_HOW_TO_HELLO_WORLD_LINES+=("ruby hello_world.rb")
 
 function __devenv_after_docker_dev_img_start() {
-  if ! [ -f '.bundle/global/bin/rails' ]; then
-    mkdir -p .bundle || return $?
+  if ! [ -f "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.bundle/global/bin/rails" ]; then
+    if [ -d "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.bundle" ]; then
+      __devenv_echo_error "'${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.bundle' directory is present but 'rails' executable is missing. Something went wrong. Exit and relaunch the env setup."
+      return 1
+    fi
     print "Copying preinstalled gems into '.bundle' dir..."
-    __devenv_docker_dev_img_run cp -R /home/preinstalled-gems /home/dev/.bundle/global
+    __devenv_docker_dev_img_exec mkdir -p "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.bundle"
+    __devenv_docker_dev_img_exec cp -R /home/preinstalled-gems/ "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.bundle/global"
     echo
   fi
+
 
   if [ -f Gemfile ]; then
     __devenv_print_and_run_command bundle install
