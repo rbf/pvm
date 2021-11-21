@@ -18,7 +18,6 @@ function __devenv_after_docker_dev_img_start() {
     echo
   fi
 
-
   if [ -f Gemfile ]; then
     __devenv_print_and_run_command bundle install
     echo
