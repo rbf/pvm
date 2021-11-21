@@ -276,6 +276,10 @@ function __devenv_docker_dev_img_exec_interactive_as_root() {
   __devenv_docker_dev_img_exec_interactive --as-root "${@}"
 }
 
+if [ -n "${TMUX}" ]; then
+  tmux rename-window "$(basename $PWD) - ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
+fi
+
 if __devenv_docker_dockerfile_unmodified_since_last_build; then
   docker image inspect \
     --format="Image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' exists locally. It was created on {{.Created}}." \
@@ -295,15 +299,30 @@ if ! __devenv_docker_dev_img_start; then
   $(__devenv_abort "Unable to start the docker container")
 fi
 
-# Use list trap instead of the function trap TRAPEXIT() because it does not get
-# inherited by subshells. From the doc: "Function traps are not reset within
-# subshells, in accordance with zsh behaviour; list traps are reset, in
-# accordance with POSIX behaviour."
-# DOC: https://zsh.sourceforge.io/Doc/Release/Functions.html
-trap '
+__devenv_reset_env() {
   print "Force-removing devenv docker container ${__DEVENV_TARGET_COINTAINER_NAME}..."
   docker rm --force "${__DEVENV_TARGET_COINTAINER_NAME}"
-' EXIT
+  if [[ "${SHELL}" == '/bin/zsh' ]]; then
+    unset -m "__DEVENV_*"
+    unset -fm "__devenv_*"
+  else
+    unset "${!__DEVENV_@}"
+    unset -f "${!__devenv_@}"
+  fi
+  local alias_name
+  for alias_name in $( alias | grep __devenv | cut -f 1 -d '='); do
+    unalias ${alias_name}
+  done
+  unset alias_name
+  tmux rename-window "$(basename $PWD)"
+}
+# DOC: https://zsh.sourceforge.io/Doc/Release/Functions.html
+# SOURCE: 21nov2021 https://stackoverflow.com/a/22794374
+if [[ "${SHELL}" == '/bin/zsh' ]]; then
+  zshexit() { __devenv_reset_env || true }
+else
+  trap '__devenv_reset_env || true' EXIT
+fi
 
 __devenv_after_docker_dev_img_start
 

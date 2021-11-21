@@ -1,0 +1,15 @@
+function devenv() {
+  if [ ${1} = "reset" ]; then
+    if [ -n "${__DEVENV_TARGET}" ]; then
+      __devenv_reset_env
+    else
+      echo "Nothing to reset"
+    fi
+    return
+  fi
+  /usr/local/bin/devenv "${@}"
+  if [ -f ".devenv/env" ]; then
+    source ".devenv/env"
+    rm ".devenv/env"
+  fi
+}
