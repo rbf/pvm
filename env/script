@@ -44,7 +44,6 @@ export __DEVENV_TOOL_NAME='devenv'
 export __DEVENV_CONTAINER_USER="${__DEVENV_TOOL_NAME}"
 export __DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH="/home/${__DEVENV_CONTAINER_USER}/host"
 
-export __DEVENV_TARGET_COINTAINER_NAME="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}-ctr"
 export __DEVENV_TARGET_DIR="${__DEVENV_ENV_DIR_FULL_PATH}/${__DEVENV_TARGET}"
 
 if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
@@ -78,23 +77,30 @@ if ! source "${__DEVENV_TARGET_DIR}/script"; then
   $(__devenv_abort "Unable to source '${__DEVENV_TARGET_DIR}/script'.")
 fi
 
-if ! __devenv_parse_available_versions; then
-  $(__devenv_abort "Unable to parse available versions from '${__DEVENV_TARGET_DIR}/versions'.")
-fi
+if [[ "${__DEVENV_BASE_IMAGE_VERSION-undefined}" == "undefined" ]] ||
+   [[ "${__DEVENV_SECONDARY_VERSION-undefined}" == "undefined" ]]; then
+  print -P "%F{3}__DEVENV_BASE_IMAGE_VERSION and/or __DEVENV_SECONDARY_VERSION are not set. Getting defaults...%f"
 
-__DEVENV_BASE_IMAGE_VERSION="${__DEVENV_TARGET_VERSIONS[1]}"
+  if ! __devenv_parse_available_versions; then
+    $(__devenv_abort "Unable to parse available versions from '${__DEVENV_TARGET_DIR}/versions'.")
+  fi
 
-if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
-  $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after after parsing '${__DEVENV_TARGET_DIR}/versions'")
-fi
+  __DEVENV_BASE_IMAGE_VERSION="${__DEVENV_TARGET_VERSIONS[1]}"
 
-if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-  if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}" ]; then
-    __DEVENV_SECONDARY_VERSION="${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}"
-  else
-    $(__devenv_abort "Missing version for '${__DEVENV_SECONDARY_NAME}'")
+  if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
+    $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after after parsing '${__DEVENV_TARGET_DIR}/versions'")
+  fi
+
+  if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
+    if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}" ]; then
+      __DEVENV_SECONDARY_VERSION="${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}"
+    else
+      $(__devenv_abort "Missing version for '${__DEVENV_SECONDARY_NAME}'")
+    fi
   fi
 fi
+
+export __DEVENV_TARGET_COINTAINER_NAME="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}-${__DEVENV_ENV_VERSION//./-}-ctr"
 
 export __DEVENV_USER_CONFIG_DIR_RELATIVE_PATH=".${__DEVENV_CONTAINER_USER}/${__DEVENV_TARGET}/${__DEVENV_BASE_IMAGE_VERSION}"
 export __DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH="${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_USER_CONFIG_DIR_RELATIVE_PATH}"

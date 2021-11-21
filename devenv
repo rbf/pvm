@@ -45,7 +45,11 @@ Available commands:
                             and off otherwise.
       --porcelain           Format in a machine readable way (i.e. csv).
 
-  open string         Opens a new tmux window with the tools for the 'string' env.
+  open string [version [tool-version]]
+                      Opens a new tmux window with the tools for the 'string' env. By default it
+                      opens the newest available version. Optionally, the environment and the
+                      corresponding tool's versions (if present for that environment) can be
+                      specified.
 
   help                Print this help and exits.
 
@@ -79,6 +83,47 @@ Now add the following line at the end of your .zshrc file:
   \$(devenv source \${__DEVENV_TARGET})
 
 EOF
+}
+
+function get_version_pattern() {
+  case "${1}" in
+    '' )
+      return
+      ;;
+    *.*.[0-9]|*.*.[0-9][0-9]|*.*.[0-9][0-9][0-9] )
+      print "${1//./\\\\.}"
+      ;;
+    *.[0-9]|*.[0-9][0-9]|*.[0-9][0-9][0-9] )
+      print "${1//./\\\\.}\\\\.[0-9][0-9]*"
+      ;;
+    [0-9]|[0-9][0-9]|[0-9][0-9][0-9] )
+      print "${1//./\\\\.}\\\\.[0-9][0-9]*\\\\.[0-9][0-9]*"
+      ;;
+    * )
+      exit_with_error "Unrecognized version format: '${1}'"
+      ;;
+  esac
+}
+
+function env_version() {
+  echo "${1:-${IMAGE_TAGS[${i}]}}" | grep -oE '\d+\.\d+\.\d+'
+}
+
+function parse_env_versions() {
+  unset IMAGE_TAGS TOOL_VERSIONS
+  if ! versions="$(set -o pipefail; cat "${1}/versions" | sed '/^\s*#/d;/^$/d')"; then
+    exit_with_error "Unable to parse available versions from '${1}/versions'."
+  fi
+
+  # (f) Split the result of the expansion at newlines.
+  # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
+  for version in "${(f)versions}"; do
+    found_versions=true
+    IMAGE_TAGS+=("${version%%|*}")
+    TOOL_VERSIONS+=("$(echo ${version} | sed '/|/!d;s/[^|]*|\(.*\)/\1/')")
+    ${is_print_all_versions:-true} || break
+  done
+  unset version versions
 }
 
 function list() {
@@ -125,23 +170,8 @@ function list() {
     esac
   done
 
-  function parse_env_versions() {
-    unset image_tags tool_versions
-    if ! versions="$(set -o pipefail; cat "${1}/versions" | sed '/^\s*#/d;/^$/d')"; then
-      exit_with_error "Unable to parse available versions from '${1}/versions'."
-    fi
-    # (f) Split the result of the expansion at newlines.
-    # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
-    for version in "${(f)versions}"; do
-      image_tags+=("${version%%|*}")
-      tool_versions+=("$(echo ${version} | sed '/|/!d;s/[^|]*|\(.*\)/\1/')")
-      $is_print_all_versions || break
-    done
-    unset version versions
-  }
-
   function image_tag() {
-    $is_verbose && print -n "${env_name}:${image_tags[${i}]}${1}"
+    $is_verbose && print -n "${env_name}:${IMAGE_TAGS[${i}]}${1}"
   }
 
   function get_fg_for() {
@@ -182,14 +212,10 @@ function list() {
     fi
   }
 
-  function env_version() {
-    echo "${image_tags[${i}]}" | grep -oE '\d+\.\d+\.\d+'
-  }
-
   function list_human_friendly() {
-    for (( i = 0; i < ${#image_tags[@]}; i++ )); do
+    for (( i = 0; i < ${#IMAGE_TAGS[@]}; i++ )); do
       env_version="$(env_version)"
-      tool_version="${tool_versions[i]}"
+      tool_version="${TOOL_VERSIONS[i]}"
       image_tag="$(image_tag)"
       if ((i == 0)); then
         print -n "*"
@@ -201,8 +227,8 @@ function list() {
   }
 
   function list_porcelain() {
-    for (( i = 0; i < ${#image_tags[@]}; i++ )); do
-      print "${env_name};$(env_version);${tool_name};${tool_versions[${i}]};$(image_tag ';')"
+    for (( i = 0; i < ${#IMAGE_TAGS[@]}; i++ )); do
+      print "${env_name};$(env_version);${tool_name};${TOOL_VERSIONS[${i}]};$(image_tag ';')"
     done
   }
 
@@ -240,6 +266,34 @@ function check_available_target_env_or_exit() {
   fi
 }
 
+function set_target_env_and_tool_versions_or_exit() {
+  parse_env_versions "${TARGET_ENV_DIR}"
+
+  if ! [ -n "${1}" ]; then
+    __DEVENV_BASE_IMAGE_VERSION="${IMAGE_TAGS[0]}"
+    __DEVENV_SECONDARY_VERSION="${TOOL_VERSIONS[0]}"
+    return
+  fi
+
+  env_version_pattern="$(get_version_pattern "${1}")" || exit
+  tool_version_pattern="$(get_version_pattern "${2}")" || exit
+
+  local env_version
+  local tool_version
+  for (( i = 0; i < ${#IMAGE_TAGS[@]}; i++ )); do
+    env_version="${IMAGE_TAGS[$i]}"
+    tool_version="${TOOL_VERSIONS[$i]}"
+    if [[ "${env_version}" =~ "(^|-)${env_version_pattern}" ]] && [[ "${tool_version}" =~ "^${tool_version_pattern}" ]]; then
+      __DEVENV_BASE_IMAGE_VERSION="${env_version}"
+      __DEVENV_SECONDARY_VERSION="${tool_version}"
+      return
+    fi
+  done
+  exit_with_error \
+    "No available ${__DEVENV_TARGET} version matching '${1}'${2:+ with tool version "'"}${2}${2:+"'"}." \
+    "Type 'devenv list -a -f ${__DEVENV_TARGET}' for a list of available ${__DEVENV_TARGET} versions."
+}
+
 function source_target_env() {
   [ -n "${1}" ] || return
   check_available_target_env_or_exit "${1}"
@@ -252,10 +306,19 @@ function open_target_env() {
   fi
   __DEVENV_TARGET="${1}"
   check_available_target_env_or_exit "${__DEVENV_TARGET}"
-  if tmux new-window -n "${__DEVENV_TARGET} (devenv)" -e "IS_ALLOWED_TO_PRINT_LOGIN_GREETING=false" -e "__DEVENV_TARGET=${__DEVENV_TARGET}"; then
-    exit_with_success "New tmux window opened for target env '${__DEVENV_TARGET}'."
+  set_target_env_and_tool_versions_or_exit "${2}" "${3}"
+  __DEVENV_ENV_VERSION="$(env_version "${__DEVENV_BASE_IMAGE_VERSION}")"
+  env_name_and_version="${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
+  if tmux new-window \
+          -n "${env_name_and_version} (devenv)" \
+          -e "IS_ALLOWED_TO_PRINT_LOGIN_GREETING=false" \
+          -e "__DEVENV_TARGET=${__DEVENV_TARGET}" \
+          -e "__DEVENV_ENV_VERSION=${__DEVENV_ENV_VERSION}" \
+          -e "__DEVENV_BASE_IMAGE_VERSION=${__DEVENV_BASE_IMAGE_VERSION}" \
+          -e "__DEVENV_SECONDARY_VERSION=${__DEVENV_SECONDARY_VERSION}"; then
+    exit_with_success "New tmux window opened for ${env_name_and_version}."
   else
-    exit_with_error "Unable to open a new tmux window for target env '${__DEVENV_TARGET}'."
+    exit_with_error "Unable to open a new tmux window for ${env_name_and_version}."
   fi
 
 }
