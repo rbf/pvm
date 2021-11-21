@@ -28,14 +28,14 @@ function print_help() {
 
 %BUsage:%b
 
-  %B${DEVENV_NAME}%b %B%F{2}command%f%b [%F{3}options...%f]
+  %B${DEVENV_NAME}%b %B%F{2}command%f%b [%F{3}flags...%f] [%F{3}options...%f]
 
 
 %BAvailable commands:%b
 
   %B%F{2}install%f%b             Create a simlink to /usr/local/bin and explains what else to do.
 
-  %B%F{2}list%f%b                List available environments.
+  %B%F{2}list%f%b  [%F{3}flags...%f]    List available environments.
 
       %F{3}--all%f, %F{3}-a%f             List all versions for each enviorment. Without this flag only the
                             default version for each environment is listed.
@@ -45,11 +45,14 @@ function print_help() {
                             and off otherwise.
       %F{3}--porcelain%f           Format in a machine readable way (i.e. csv).
 
-  %B%F{2}open%f%b %F{3}string%f [%F{3}version%f [%F{3}tool-version%f]]
+  %B%F{2}open%f%b [%F{3}flags...%f] %F{3}string%f [%F{3}version%f [%F{3}tool-version%f]]
                       Opens a new tmux window with the tools for the 'string' env. By default it
                       opens the newest available version. Optionally, the environment and the
                       corresponding tool's versions (if present for that environment) can be
                       specified.
+
+      %F{3}--port%f, %F{3}-p int%f        Open the given port on the ${DEVENV_NAME} container and bind it
+                            to the same port on the host system.
 
   %B%F{2}help%f%b                Print this help.
 "
@@ -303,14 +306,40 @@ function open_target_env() {
   if [ -z "${TMUX}" ]; then
     exit_with_error "${DEVENV_NAME} currently only works from within a tmux session."
   fi
+  while (( # > 0 )); do
+  case "${1}" in
+    --port|-p )
+      flag="${1}"
+      shift
+      if [ -n "${1}" ]; then
+        port="${1}"
+        shift
+      else
+        exit_with_error "Missing value for '${flag}' flag"
+      fi
+      ;;
+    -- )
+      shift
+      break
+      ;;
+    -* )
+      exit_with_error "Unsupported option '${1}' for open command"
+      ;;
+    * )
+      break
+      ;;
+  esac
+done
   __DEVENV_TARGET="${1}"
   check_available_target_env_or_exit "${__DEVENV_TARGET}"
   set_target_env_and_tool_versions_or_exit "${2}" "${3}"
+
   __DEVENV_ENV_VERSION="$(env_version "${__DEVENV_BASE_IMAGE_VERSION}")"
   env_name_and_version="${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
   if tmux new-window \
           -n "${env_name_and_version} (devenv)" \
           -e "IS_ALLOWED_TO_PRINT_LOGIN_GREETING=false" \
+          -e "__DEVENV_CUSTOM_PORT=${port}" \
           -e "__DEVENV_TARGET=${__DEVENV_TARGET}" \
           -e "__DEVENV_ENV_VERSION=${__DEVENV_ENV_VERSION}" \
           -e "__DEVENV_BASE_IMAGE_VERSION=${__DEVENV_BASE_IMAGE_VERSION}" \
