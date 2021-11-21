@@ -236,13 +236,11 @@ function list() {
 
   if $is_verbose; then
     if $is_porcelain; then
-      print "env;env version;tool;tool version;docker image tag;"
+      print "env;version;tool;tool version;base docker image;"
     elif $is_color_enabled; then
-      print -P " |%B%F{15}Env%f%b|%B%F{15}Env Version%f%b|%F{15}Tool%f|%F{15}Tool Version%f|%F{15}Base Docker Image%f"
-      print -P -- " |%B%F{15}-----------%f%b|%B%F{15}-----------%f%b|%F{15}-----------%f|%F{15}-----------%f|%F{15}-----------%f"
+      print -P " |%B%F{15}ENV%f%b|%B%F{15}VERSION%f%b|%F{15}TOOL%f|%F{15}TOOL VERSION%f|%F{15}BASE DOCKER IMAGE%f"
     else
-      print " |Env|Env Version|Tool|Tool Version|Base Docker Image"
-      print -- " |-----------|-----------|-----------|-----------|-----------"
+      print " |ENV|VERSION|TOOL|TOOL VERSION|BASE DOCKER IMAGE"
     fi
   fi
 
