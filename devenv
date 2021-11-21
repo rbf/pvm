@@ -16,8 +16,8 @@ INSTALL_DIR="/usr/local/bin"
 INSTALL_FULL_PATH="${INSTALL_DIR}/${DEVENV_NAME}"
 
 function print_help() {
-  cat << EOF
-devenv ${DEVENV_VERSION}
+  print -P "
+%B${DEVENV_NAME} ${DEVENV_VERSION}%b
 
     Setup and use local dev environments without installing them locally
     leveraging Docker to simulate the commands available normally for the
@@ -26,34 +26,33 @@ devenv ${DEVENV_VERSION}
     Note that this currently only works for Zshell and in a Tmux session.
 
 
-Usage:
+%BUsage:%b
 
-  devenv command [options]
+  %B${DEVENV_NAME}%b %B%F{2}command%f%b [%F{3}options...%f]
 
 
-Available commands:
+%BAvailable commands:%b
 
-  install             Creates a simlink to /usr/local/bin and explains what else to do.
+  %B%F{2}install%f%b             Create a simlink to /usr/local/bin and explains what else to do.
 
-  list                List available environments.
+  %B%F{2}list%f%b                List available environments.
 
-      --all, -a             List all versions for each enviorment. Without this flag only the
+      %F{3}--all%f, %F{3}-a%f             List all versions for each enviorment. Without this flag only the
                             default version for each environment is listed.
-      --filter, -f string   List only the environments matching the given string.
-      --verbose, -v         Include headers and base Docker image tag.
-      --color, --no-color   Force or disable color formating. By default, on when sdtout is terminal
+      %F{3}--filter%f, %F{3}-f string%f   List only the environments matching the given string.
+      %F{3}--verbose%f, %F{3}-v%f         Include headers and base Docker image tag.
+      %F{3}--color%f, %F{3}--no-color%f   Force or disable color formating. By default, on when sdtout is terminal
                             and off otherwise.
-      --porcelain           Format in a machine readable way (i.e. csv).
+      %F{3}--porcelain%f           Format in a machine readable way (i.e. csv).
 
-  open string [version [tool-version]]
+  %B%F{2}open%f%b %F{3}string%f [%F{3}version%f [%F{3}tool-version%f]]
                       Opens a new tmux window with the tools for the 'string' env. By default it
                       opens the newest available version. Optionally, the environment and the
                       corresponding tool's versions (if present for that environment) can be
                       specified.
 
-  help                Print this help and exits.
-
-EOF
+  %B%F{2}help%f%b                Print this help.
+"
 }
 
 function exit_with_error() {
