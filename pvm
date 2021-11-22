@@ -4,20 +4,20 @@
 
 set -o pipefail
 
-DEVENV_VERSION='v0.1'
+PVM_VERSION='v0.1'
 
 # Make arrays to be zero-based, as in bash.
 setopt KSH_ARRAYS
 
-DEVENV_FULL_PATH="${0:A}"
-DEVENV_DIR="$(dirname "${DEVENV_FULL_PATH}")"
-DEVENV_NAME="$(basename "${DEVENV_FULL_PATH}")"
+PVM_FULL_PATH="${0:A}"
+PVM_DIR="$(dirname "${PVM_FULL_PATH}")"
+PVM_NAME="$(basename "${PVM_FULL_PATH}")"
 INSTALL_DIR="/usr/local/bin"
-INSTALL_FULL_PATH="${INSTALL_DIR}/${DEVENV_NAME}"
+INSTALL_FULL_PATH="${INSTALL_DIR}/${PVM_NAME}"
 
 function print_help() {
   print -P "
-%B${DEVENV_NAME} ${DEVENV_VERSION}%b
+%B${PVM_NAME} ${PVM_VERSION}%b
 
     Setup and use local dev environments without installing them locally
     leveraging Docker to simulate the commands available normally for the
@@ -28,7 +28,7 @@ function print_help() {
 
 %BUsage:%b
 
-  %B${DEVENV_NAME}%b %B%F{2}command%f%b [%F{3}flags...%f] [%F{3}options...%f]
+  %B${PVM_NAME}%b %B%F{2}command%f%b [%F{3}flags...%f] [%F{3}options...%f]
 
 
 %BAvailable commands:%b
@@ -51,7 +51,7 @@ function print_help() {
                       and the corresponding tool's versions (if present for that environment) can be
                       specified.
 
-      %F{3}--port%f, %F{3}-p int%f        use the given port on the ${DEVENV_NAME} container and bind it
+      %F{3}--port%f, %F{3}-p int%f        use the given port on the ${PVM_NAME} container and bind it
                             to the same port on the host system.
 
   %B%F{2}help%f%b                Print this help.
@@ -60,7 +60,7 @@ function print_help() {
 
 function exit_with_error() {
   print -P "%F{1}ERROR${*+: }${*}%f" 1>&2
-  print "Type 'devenv help' for more information." 1>&2
+  print "Type 'pvm help' for more information." 1>&2
   exit 1
 }
 
@@ -76,13 +76,13 @@ function exit_with_success() {
 
 function install() {
   if [ -f  "${INSTALL_FULL_PATH}" ]; then
-    exit_with_warn "A file named '${DEVENV_NAME}' is already present in '${INSTALL_DIR}'. Nothing to do."
+    exit_with_warn "A file named '${PVM_NAME}' is already present in '${INSTALL_DIR}'. Nothing to do."
   fi
-  ln -vs "${DEVENV_FULL_PATH}" "${INSTALL_FULL_PATH}" || exit_with_error
+  ln -vs "${PVM_FULL_PATH}" "${INSTALL_FULL_PATH}" || exit_with_error
   cat << EOF
 Now add the following line at the end of your .zshrc file:
 
-  \$(devenv source \${__DEVENV_TARGET})
+  \$(pvm source \${__PVM_TARGET})
 
 EOF
 }
@@ -244,11 +244,11 @@ function list() {
     fi
   fi
 
-  find "${DEVENV_DIR}/env" -type d -mindepth 1 -maxdepth 1 | sort | while read env_dir; do
+  find "${PVM_DIR}/env" -type d -mindepth 1 -maxdepth 1 | sort | while read env_dir; do
     parse_env_versions "${env_dir}"
     env_name="$(basename ${env_dir})"
     prev_env_name=""
-    tool_name="$(grep '__DEVENV_SECONDARY_NAME' "${env_dir}/script" | cut -f 2 -d '=' | tr -d '"'"'")"
+    tool_name="$(grep '__PVM_SECONDARY_NAME' "${env_dir}/script" | cut -f 2 -d '=' | tr -d '"'"'")"
     prev_tool_name=""
     { $is_porcelain && list_porcelain || list_human_friendly } | grep -- "${filter_pattern}"
   done
@@ -260,7 +260,7 @@ function check_available_target_env_or_exit() {
     exit_with_error "Target env missing."
   fi
 
-  TARGET_ENV_DIR="${DEVENV_DIR}/env/${1}"
+  TARGET_ENV_DIR="${PVM_DIR}/env/${1}"
   if ! [ -d "${TARGET_ENV_DIR}" ]; then
     exit_with_error "Target env '${1}' not found."
   fi
@@ -270,8 +270,8 @@ function set_target_env_and_tool_versions_or_exit() {
   parse_env_versions "${TARGET_ENV_DIR}"
 
   if ! [ -n "${1}" ]; then
-    __DEVENV_BASE_IMAGE_VERSION="${IMAGE_TAGS[0]}"
-    __DEVENV_SECONDARY_VERSION="${TOOL_VERSIONS[0]}"
+    __PVM_BASE_IMAGE_VERSION="${IMAGE_TAGS[0]}"
+    __PVM_SECONDARY_VERSION="${TOOL_VERSIONS[0]}"
     return
   fi
 
@@ -284,18 +284,18 @@ function set_target_env_and_tool_versions_or_exit() {
     env_version="${IMAGE_TAGS[$i]}"
     tool_version="${TOOL_VERSIONS[$i]}"
     if [[ "${env_version}" =~ "(^|-)${env_version_pattern}" ]] && [[ "${tool_version}" =~ "^${tool_version_pattern}" ]]; then
-      __DEVENV_BASE_IMAGE_VERSION="${env_version}"
-      __DEVENV_SECONDARY_VERSION="${tool_version}"
+      __PVM_BASE_IMAGE_VERSION="${env_version}"
+      __PVM_SECONDARY_VERSION="${tool_version}"
       return
     fi
   done
   exit_with_error \
-    "No available ${__DEVENV_TARGET} version matching '${1}'${2:+ with tool version "'"}${2}${2:+"'"}." \
-    "Type 'devenv list -a -f ${__DEVENV_TARGET}' for a list of available ${__DEVENV_TARGET} versions."
+    "No available ${__PVM_TARGET} version matching '${1}'${2:+ with tool version "'"}${2}${2:+"'"}." \
+    "Type 'pvm list -a -f ${__PVM_TARGET}' for a list of available ${__PVM_TARGET} versions."
 }
 
-function source_devenv_wrapper_fn() {
-  print "source ${DEVENV_FULL_PATH}_wrapper_fn \"${${DEVENV_FULL_PATH}}\""
+function source_pvm_wrapper_fn() {
+  print "source ${PVM_FULL_PATH}_wrapper_fn \"${${PVM_FULL_PATH}}\""
 }
 
 function host_os() {
@@ -316,7 +316,7 @@ function host_os() {
 
 function use_target_env() {
   if [ -z "${TMUX}" ]; then
-    exit_with_error "${DEVENV_NAME} currently only works from within a tmux session."
+    exit_with_error "${PVM_NAME} currently only works from within a tmux session."
   fi
   while (( # > 0 )); do
   case "${1}" in
@@ -342,22 +342,22 @@ function use_target_env() {
       ;;
   esac
 done
-  __DEVENV_TARGET="${1}"
-  check_available_target_env_or_exit "${__DEVENV_TARGET}"
+  __PVM_TARGET="${1}"
+  check_available_target_env_or_exit "${__PVM_TARGET}"
   set_target_env_and_tool_versions_or_exit "${2}" "${3}"
 
-  __DEVENV_ENV_VERSION="$(env_version "${__DEVENV_BASE_IMAGE_VERSION}")"
-  env_name_and_version="${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
-  mkdir -p ".${DEVENV_NAME}"
-  cat << EOF > ".${DEVENV_NAME}/env"
-export __DEVENV_HOST_OS="$(host_os)"
-export __DEVENV_TOOL_NAME="${DEVENV_NAME}"
-export __DEVENV_CUSTOM_PORT="${port}"
-export __DEVENV_TARGET="${__DEVENV_TARGET}"
-export __DEVENV_ENV_VERSION="${__DEVENV_ENV_VERSION}"
-export __DEVENV_BASE_IMAGE_VERSION="${__DEVENV_BASE_IMAGE_VERSION}"
-export __DEVENV_SECONDARY_VERSION="${__DEVENV_SECONDARY_VERSION}"
-source ${DEVENV_DIR}/env/script
+  __PVM_ENV_VERSION="$(env_version "${__PVM_BASE_IMAGE_VERSION}")"
+  env_name_and_version="${__PVM_TARGET} ${__PVM_ENV_VERSION}"
+  mkdir -p ".${PVM_NAME}"
+  cat << EOF > ".${PVM_NAME}/env"
+export __PVM_HOST_OS="$(host_os)"
+export __PVM_TOOL_NAME="${PVM_NAME}"
+export __PVM_CUSTOM_PORT="${port}"
+export __PVM_TARGET="${__PVM_TARGET}"
+export __PVM_ENV_VERSION="${__PVM_ENV_VERSION}"
+export __PVM_BASE_IMAGE_VERSION="${__PVM_BASE_IMAGE_VERSION}"
+export __PVM_SECONDARY_VERSION="${__PVM_SECONDARY_VERSION}"
+source ${PVM_DIR}/env/script
 EOF
 }
 
@@ -381,7 +381,7 @@ function parse_commands_and_options() {
         ;;
       source )
         shift
-        source_devenv_wrapper_fn "${@}"
+        source_pvm_wrapper_fn "${@}"
         exit
         ;;
       help|'' )

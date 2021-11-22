@@ -1,32 +1,32 @@
 #!/bin/zsh
 
-__DEVENV_SECONDARY_NAME="Composer"
-__DEVENV_PORT="8000"
+__PVM_SECONDARY_NAME="Composer"
+__PVM_PORT="8000"
 
-__DEVENV_IMP_GET_STARTED_URL='https://www.php.net/manual/en/getting-started.php'
+__PVM_IMP_GET_STARTED_URL='https://www.php.net/manual/en/getting-started.php'
 
 # SOURCE: 16nov2021 https://gist.github.com/macagua/004940174289bd12a8e7d03ad92410bf
-__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo '<?php\\\\necho \"<<HELLOWORLDTEXT>>\\\\\\\\n\";' > hello.php")
-__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("php hello.php")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo '<?php\\\\necho \"<<HELLOWORLDTEXT>>\\\\\\\\n\";' > hello.php")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("php hello.php")
 
-function __devenv_imp_after_docker_dev_img_start() {
-  if ! [ -f "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer/vendor/bin/laravel" ]; then
-    if [ -d "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer" ]; then
-      __devenv_echo_error "'${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer' directory is present but 'laravel' executable is missing. Something went wrong. Exit and relaunch the env setup."
+function __pvm_imp_after_docker_dev_img_start() {
+  if ! [ -f "${__PVM_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer/vendor/bin/laravel" ]; then
+    if [ -d "${__PVM_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer" ]; then
+      __pvm_echo_error "'${__PVM_HOST_USER_CONFIG_DIR_FULL_PATH}/.composer' directory is present but 'laravel' executable is missing. Something went wrong. Exit and relaunch the env setup."
       return 1
     fi
     print "Copying preinstalled packages into '.composer' directory..."
-    __devenv_docker_dev_img_exec mkdir -p "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}"
-    __devenv_docker_dev_img_exec cp -R /home/preinstalled/.composer/ "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.composer"
+    __pvm_docker_dev_img_exec mkdir -p "${__PVM_CONTAINER_USER_CONFIG_DIR_FULL_PATH}"
+    __pvm_docker_dev_img_exec cp -R /home/preinstalled/.composer/ "${__PVM_CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.composer"
     echo
   fi
 }
 
-__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('php --version')
-__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('composer --version')
-__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('laravel --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('php --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('composer --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('laravel --version')
 
-__DEVENV_IMP_ALIASES[php]='php'
-__DEVENV_IMP_ALIASES[composer]='composer'
-__DEVENV_IMP_ALIASES[laravel]='laravel'
-__DEVENV_IMP_ALIASES[serve]="php artisan serve --host=0.0.0.0 --port=${__DEVENV_PORT}"
+__PVM_IMP_ALIASES[php]='php'
+__PVM_IMP_ALIASES[composer]='composer'
+__PVM_IMP_ALIASES[laravel]='laravel'
+__PVM_IMP_ALIASES[serve]="php artisan serve --host=0.0.0.0 --port=${__PVM_PORT}"

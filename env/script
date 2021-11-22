@@ -5,29 +5,29 @@ if [[ "${SHELL}" != '/bin/zsh' ]]; then
   return 1
 fi
 
-function __devenv_before_env_reset() {
-  # Override this function in ${__DEVENV_TARGET_DIR}/script if there is some setup needed before resetting the environment.
+function __pvm_before_env_reset() {
+  # Override this function in ${__PVM_TARGET_DIR}/script if there is some setup needed before resetting the environment.
 }
 
-__devenv_reset_env() {
-  __devenv_before_env_reset
-  if ${__DEVENV_STOP_CONTAINER_ON_RESET:-true} && [ -n "${__DEVENV_TARGET_CONTAINER_NAME}" ]; then
-    print "Force-removing devenv docker container ${__DEVENV_TARGET_CONTAINER_NAME}..."
-    docker rm --force "${__DEVENV_TARGET_CONTAINER_NAME}"
+__pvm_reset_env() {
+  __pvm_before_env_reset
+  if ${__PVM_STOP_CONTAINER_ON_RESET:-true} && [ -n "${__PVM_TARGET_CONTAINER_NAME}" ]; then
+    print "Force-removing pvm docker container ${__PVM_TARGET_CONTAINER_NAME}..."
+    docker rm --force "${__PVM_TARGET_CONTAINER_NAME}"
   fi
   if [[ "${SHELL}" == '/bin/zsh' ]]; then
-    unset -m "__DEVENV_*"
-    unset -fm "__devenv_*"
+    unset -m "__PVM_*"
+    unset -fm "__pvm_*"
   else
-    unset "${!__DEVENV_@}"
-    unset -f "${!__devenv_@}"
+    unset "${!__PVM_@}"
+    unset -f "${!__pvm_@}"
   fi
-  unalias $(alias | grep __devenv | cut -f 1 -d '=' | xargs echo)
+  unalias $(alias | grep __pvm | cut -f 1 -d '=' | xargs echo)
   [ -n "${TMUX}" ] && tmux rename-window "$(basename $PWD)"
 }
 
-function __devenv_echo_error() { print -P "%F{1}ERROR${*+: }${*}%f" 1>&2 }
-function __devenv_imp_slugify() {
+function __pvm_echo_error() { print -P "%F{1}ERROR${*+: }${*}%f" 1>&2 }
+function __pvm_imp_slugify() {
   echo $(if [ -p /dev/stdin ]; then cat -; else echo "${*}"; fi) \
      | tr -sc '[:alnum:]' '-' \
      | iconv -c -f utf-8 -t ASCII//TRANSLIT \
@@ -39,148 +39,148 @@ function __devenv_imp_slugify() {
 # We cannot use 'exit 1' as this file is being sourced, not executed. We abuse
 # the ? expansion parameter and the fact that there is not ENV var called ERROR
 # to write ${ERROR?error message}.
-function __devenv_imp_abort() {
-  __devenv_echo_error "${@%.}."
-  __devenv_reset_env
+function __pvm_imp_abort() {
+  __pvm_echo_error "${@%.}."
+  __pvm_reset_env
   unset ERROR
   ${ERROR?Aborting setup.}
 }
 
-if [ -z "${__DEVENV_HOST_OS}" ] || \
-   [ -z "${__DEVENV_TOOL_NAME}" ] || \
-   [ -z "${__DEVENV_TARGET}" ] || \
-   [ -z "${__DEVENV_ENV_VERSION}" ] || \
-   [ -z "${__DEVENV_BASE_IMAGE_VERSION}" ] || \
-   [ -z "${__DEVENV_SECONDARY_VERSION}" ]; then
-    printenv | grep __DEVENV_
-  __devenv_imp_abort "Missing (some) __DEVENV_* env vars."
+if [ -z "${__PVM_HOST_OS}" ] || \
+   [ -z "${__PVM_TOOL_NAME}" ] || \
+   [ -z "${__PVM_TARGET}" ] || \
+   [ -z "${__PVM_ENV_VERSION}" ] || \
+   [ -z "${__PVM_BASE_IMAGE_VERSION}" ] || \
+   [ -z "${__PVM_SECONDARY_VERSION}" ]; then
+    printenv | grep __PVM_
+  __pvm_imp_abort "Missing (some) __PVM_* env vars."
 fi
 
-export __DEVENV_ENV_SCRIPT_FULL_PATH="${0:A}"
-export __DEVENV_ENV_DIR_FULL_PATH="$(dirname "${__DEVENV_ENV_SCRIPT_FULL_PATH}")"
-export __DEVENV_APP_ROOT_DIR_FULL_PATH="$(pwd)"
-export __DEVENV_APP_ROOT_DIRNAME="$(basename "${__DEVENV_APP_ROOT_DIR_FULL_PATH}")"
-export __DEVENV_ENV_OS
+export __PVM_ENV_SCRIPT_FULL_PATH="${0:A}"
+export __PVM_ENV_DIR_FULL_PATH="$(dirname "${__PVM_ENV_SCRIPT_FULL_PATH}")"
+export __PVM_APP_ROOT_DIR_FULL_PATH="$(pwd)"
+export __PVM_APP_ROOT_DIRNAME="$(basename "${__PVM_APP_ROOT_DIR_FULL_PATH}")"
+export __PVM_ENV_OS
 
-export __DEVENV_CONTAINER_USER="${__DEVENV_TOOL_NAME}"
-export __DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH="/home/${__DEVENV_CONTAINER_USER}/host"
+export __PVM_CONTAINER_USER="${__PVM_TOOL_NAME}"
+export __PVM_MOUNTED_APP_ROOT_DIR_FULL_PATH="/home/${__PVM_CONTAINER_USER}/host"
 
-export __DEVENV_TARGET_DIR="${__DEVENV_ENV_DIR_FULL_PATH}/${__DEVENV_TARGET}"
+export __PVM_TARGET_DIR="${__PVM_ENV_DIR_FULL_PATH}/${__PVM_TARGET}"
 
-if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
-  __devenv_imp_abort "Target dir '${__DEVENV_TARGET_DIR}' not found."
+if ! [ -d "${__PVM_TARGET_DIR}" ]; then
+  __pvm_imp_abort "Target dir '${__PVM_TARGET_DIR}' not found."
 fi
 
-declare -a __DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END
+declare -a __PVM_IMP_COMMANDS_TO_RUN_AT_THE_END
 
 # Associative array.
 # SOURCE: 16nov2021 https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
-declare -A __DEVENV_IMP_ALIASES
-declare -A __DEVENV_IMP_ALIASES_AS_ROOT
+declare -A __PVM_IMP_ALIASES
+declare -A __PVM_IMP_ALIASES_AS_ROOT
 
-function __devenv_imp_after_docker_dev_img_start() {
-  # Override this function in ${__DEVENV_TARGET_DIR}/script if there is some setup needed after the container is started.
+function __pvm_imp_after_docker_dev_img_start() {
+  # Override this function in ${__PVM_TARGET_DIR}/script if there is some setup needed after the container is started.
 }
 
-__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH="${__DEVENV_TARGET_DIR}/script"
+__PVM_ENV_SPECIFIC_SCRIPT_FULL_PATH="${__PVM_TARGET_DIR}/script"
 
-if [ -f "${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}.${__DEVENV_BASE_IMAGE_VERSION}" ]; then
-  __DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH+=".${__DEVENV_BASE_IMAGE_VERSION}"
+if [ -f "${__PVM_ENV_SPECIFIC_SCRIPT_FULL_PATH}.${__PVM_BASE_IMAGE_VERSION}" ]; then
+  __PVM_ENV_SPECIFIC_SCRIPT_FULL_PATH+=".${__PVM_BASE_IMAGE_VERSION}"
 fi
 
-if ! source "${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}"; then
-  __devenv_imp_abort "Unable to source '${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}'."
+if ! source "${__PVM_ENV_SPECIFIC_SCRIPT_FULL_PATH}"; then
+  __pvm_imp_abort "Unable to source '${__PVM_ENV_SPECIFIC_SCRIPT_FULL_PATH}'."
 fi
 
-export __DEVENV_TARGET_CONTAINER_NAME="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}-${__DEVENV_ENV_VERSION//./-}-ctr"
+export __PVM_TARGET_CONTAINER_NAME="${__PVM_TOOL_NAME}-${__PVM_TARGET}-${__PVM_ENV_VERSION//./-}-ctr"
 
-export __DEVENV_USER_CONFIG_DIR_RELATIVE_PATH=".${__DEVENV_CONTAINER_USER}/${__DEVENV_TARGET}/${__DEVENV_BASE_IMAGE_VERSION}"
-export __DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH="${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_USER_CONFIG_DIR_RELATIVE_PATH}"
-export __DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH="${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_USER_CONFIG_DIR_RELATIVE_PATH}"
+export __PVM_USER_CONFIG_DIR_RELATIVE_PATH=".${__PVM_CONTAINER_USER}/${__PVM_TARGET}/${__PVM_BASE_IMAGE_VERSION}"
+export __PVM_HOST_USER_CONFIG_DIR_FULL_PATH="${__PVM_APP_ROOT_DIR_FULL_PATH}/${__PVM_USER_CONFIG_DIR_RELATIVE_PATH}"
+export __PVM_CONTAINER_USER_CONFIG_DIR_FULL_PATH="${__PVM_MOUNTED_APP_ROOT_DIR_FULL_PATH}/${__PVM_USER_CONFIG_DIR_RELATIVE_PATH}"
 
-export __DEVENV_PORT="${__DEVENV_CUSTOM_PORT:-${__DEVENV_PORT:-4000}}"
+export __PVM_PORT="${__PVM_CUSTOM_PORT:-${__PVM_PORT:-4000}}"
 
-export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}:${__DEVENV_BASE_IMAGE_VERSION}"
+export __PVM_TARGET_IMAGE_NAME_AND_TAG="${__PVM_TOOL_NAME}-${__PVM_TARGET}:${__PVM_BASE_IMAGE_VERSION}"
 
-if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-  __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_imp_slugify ${__DEVENV_SECONDARY_NAME})-${__DEVENV_SECONDARY_VERSION}"
+if [ -n "${__PVM_SECONDARY_NAME}" ]; then
+  __PVM_TARGET_IMAGE_NAME_AND_TAG+="-$(__pvm_imp_slugify ${__PVM_SECONDARY_NAME})-${__PVM_SECONDARY_VERSION}"
 fi
 
-function __devenv_imp_check_docker_available_and_running() {
+function __pvm_imp_check_docker_available_and_running() {
   if ! which docker 1>/dev/null; then
-    __devenv_imp_abort "'docker' command not found. Is docker installed?"
+    __pvm_imp_abort "'docker' command not found. Is docker installed?"
   elif ! docker system info 1>/dev/null 2>/dev/null; then
-    __devenv_imp_abort "Cannot connect to the Docker daemon. Is the Docker daemon running?"
+    __pvm_imp_abort "Cannot connect to the Docker daemon. Is the Docker daemon running?"
   fi
 }
 
-function __devenv_imp_docker_image_title() {
-  local __DEVENV_ENV_VERSION="$(echo "${__DEVENV_BASE_IMAGE_VERSION}" | grep -oE '\d+\.\d+\.\d+')"
-  if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-    print "${__DEVENV_TOOL_NAME} image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION} and ${__DEVENV_SECONDARY_NAME} ${__DEVENV_SECONDARY_VERSION}"
+function __pvm_imp_docker_image_title() {
+  local __PVM_ENV_VERSION="$(echo "${__PVM_BASE_IMAGE_VERSION}" | grep -oE '\d+\.\d+\.\d+')"
+  if [ -n "${__PVM_SECONDARY_NAME}" ]; then
+    print "${__PVM_TOOL_NAME} image with ${__PVM_TARGET} ${__PVM_ENV_VERSION} and ${__PVM_SECONDARY_NAME} ${__PVM_SECONDARY_VERSION}"
   else
-    print "${__DEVENV_TOOL_NAME} image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
+    print "${__PVM_TOOL_NAME} image with ${__PVM_TARGET} ${__PVM_ENV_VERSION}"
   fi
-  unset __DEVENV_ENV_VERSION
+  unset __PVM_ENV_VERSION
 }
 
-function __devenv_imp_docker_dockerfile_path() {
-  local default_dockerfile_path="${__DEVENV_TARGET_DIR}/Dockerfile"
-  if [ -f "${default_dockerfile_path}.${__DEVENV_BASE_IMAGE_VERSION}" ]; then
-    print "${default_dockerfile_path}.${__DEVENV_BASE_IMAGE_VERSION}"
+function __pvm_imp_docker_dockerfile_path() {
+  local default_dockerfile_path="${__PVM_TARGET_DIR}/Dockerfile"
+  if [ -f "${default_dockerfile_path}.${__PVM_BASE_IMAGE_VERSION}" ]; then
+    print "${default_dockerfile_path}.${__PVM_BASE_IMAGE_VERSION}"
   else
     print "${default_dockerfile_path}"
   fi
 }
 
-function __devenv_imp_docker_build_image() {
-  __devenv_imp_check_docker_available_and_running
-  print "Building $(__devenv_imp_docker_image_title)..."
+function __pvm_imp_docker_build_image() {
+  __pvm_imp_check_docker_available_and_running
+  print "Building $(__pvm_imp_docker_image_title)..."
   if ! DOCKER_SCAN_SUGGEST=false docker build \
-    --build-arg BASE_IMAGE_VERSION=${__DEVENV_BASE_IMAGE_VERSION} \
-    --build-arg MOUNTED_APP_ROOT_DIR_FULL_PATH=${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH} \
-    --build-arg CONTAINER_USER_CONFIG_DIR_FULL_PATH=${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH} \
-    --build-arg CONTAINER_USER=${__DEVENV_CONTAINER_USER} \
-    --build-arg SECONDARY_VERSION=${__DEVENV_SECONDARY_VERSION} \
-    --label "org.opencontainers.image.title=${__DEVENV_TARGET} Dev Image" \
-    --label "org.opencontainers.image.description=$(__devenv_imp_docker_image_title)" \
+    --build-arg BASE_IMAGE_VERSION=${__PVM_BASE_IMAGE_VERSION} \
+    --build-arg MOUNTED_APP_ROOT_DIR_FULL_PATH=${__PVM_MOUNTED_APP_ROOT_DIR_FULL_PATH} \
+    --build-arg CONTAINER_USER_CONFIG_DIR_FULL_PATH=${__PVM_CONTAINER_USER_CONFIG_DIR_FULL_PATH} \
+    --build-arg CONTAINER_USER=${__PVM_CONTAINER_USER} \
+    --build-arg SECONDARY_VERSION=${__PVM_SECONDARY_VERSION} \
+    --label "org.opencontainers.image.title=${__PVM_TARGET} Dev Image" \
+    --label "org.opencontainers.image.description=$(__pvm_imp_docker_image_title)" \
     --label "org.opencontainers.image.created=$(date)" \
-    --label "org.opencontainers.image.revision=$(__devenv_imp_docker_dockerfile_hash)" \
+    --label "org.opencontainers.image.revision=$(__pvm_imp_docker_dockerfile_hash)" \
     --label "org.opencontainers.image.licenses=Private - Not for public usage" \
-    --tag ${__DEVENV_TARGET_IMAGE_NAME_AND_TAG} \
-    --file "$(__devenv_imp_docker_dockerfile_path)" \
+    --tag ${__PVM_TARGET_IMAGE_NAME_AND_TAG} \
+    --file "$(__pvm_imp_docker_dockerfile_path)" \
     .; then
-    __devenv_imp_abort "Unable to build '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' image."
+    __pvm_imp_abort "Unable to build '${__PVM_TARGET_IMAGE_NAME_AND_TAG}' image."
   fi
 }
 
-function __devenv_imp_docker_dockerfile_unmodified_since_last_build() {
+function __pvm_imp_docker_dockerfile_unmodified_since_last_build() {
   test \
-   "$(__devenv_imp_docker_dockerfile_hash)" \
+   "$(__pvm_imp_docker_dockerfile_hash)" \
    = \
    "$(docker image inspect \
         --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' \
-        ${__DEVENV_TARGET_IMAGE_NAME_AND_TAG})"
+        ${__PVM_TARGET_IMAGE_NAME_AND_TAG})"
 }
 
-function __devenv_imp_docker_dockerfile_hash() {
-  shasum -a256 "$(__devenv_imp_docker_dockerfile_path)" | head -c 7
+function __pvm_imp_docker_dockerfile_hash() {
+  shasum -a256 "$(__pvm_imp_docker_dockerfile_path)" | head -c 7
 }
 
-function __devenv_imp_docker_dev_img_start() {
-  __devenv_imp_check_docker_available_and_running
-  __DEVENV_EXISTING_APP_ROOT_DIR=$(
-    docker container inspect --format='{{ (index .Mounts 0).Source }}' "${__DEVENV_TARGET_CONTAINER_NAME}" 2>/dev/null
+function __pvm_imp_docker_dev_img_start() {
+  __pvm_imp_check_docker_available_and_running
+  __PVM_EXISTING_APP_ROOT_DIR=$(
+    docker container inspect --format='{{ (index .Mounts 0).Source }}' "${__PVM_TARGET_CONTAINER_NAME}" 2>/dev/null
   )
 
-  if [ -n "${__DEVENV_EXISTING_APP_ROOT_DIR}" ]; then
-    __DEVENV_STOP_CONTAINER_ON_RESET=false
+  if [ -n "${__PVM_EXISTING_APP_ROOT_DIR}" ]; then
+    __PVM_STOP_CONTAINER_ON_RESET=false
     print \
       "Please exit the shell session below or manually kill the docker container with" \
-      "'docker rm -f ${__DEVENV_TARGET_CONTAINER_NAME}'."
-    __devenv_imp_abort \
-      "${__DEVENV_TOOL_NAME} for '${__DEVENV_TARGET}' is currently instanciated on" \
-      "another shell session on the directory '"${__DEVENV_EXISTING_APP_ROOT_DIR}"'."
+      "'docker rm -f ${__PVM_TARGET_CONTAINER_NAME}'."
+    __pvm_imp_abort \
+      "${__PVM_TOOL_NAME} for '${__PVM_TARGET}' is currently instanciated on" \
+      "another shell session on the directory '"${__PVM_EXISTING_APP_ROOT_DIR}"'."
   fi
 
   # Usage:  docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
@@ -197,34 +197,34 @@ function __devenv_imp_docker_dev_img_start() {
   #   --restart string         Restart policy to apply when a container exits (default "no")
   #   -h, --hostname string    Container host name
   #   -v, --volume list        Bind mount a volume
-  if ! __DEVENV_TARGET_COINTAINER_ID="$(docker run \
+  if ! __PVM_TARGET_COINTAINER_ID="$(docker run \
           --detach \
           --restart=unless-stopped \
-          --publish "${__DEVENV_PORT}:${__DEVENV_PORT}" \
-          --name "${__DEVENV_TARGET_CONTAINER_NAME}" \
-          --hostname "${__DEVENV_TARGET_CONTAINER_NAME}" \
-          --volume "${__DEVENV_APP_ROOT_DIR_FULL_PATH}:${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}" \
-          "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
+          --publish "${__PVM_PORT}:${__PVM_PORT}" \
+          --name "${__PVM_TARGET_CONTAINER_NAME}" \
+          --hostname "${__PVM_TARGET_CONTAINER_NAME}" \
+          --volume "${__PVM_APP_ROOT_DIR_FULL_PATH}:${__PVM_MOUNTED_APP_ROOT_DIR_FULL_PATH}" \
+          "${__PVM_TARGET_IMAGE_NAME_AND_TAG}" \
           tail -f /dev/null)"; then
-    __devenv_imp_abort "Unable to start the docker container '${__DEVENV_TARGET_CONTAINER_NAME}' from the image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}'."
+    __pvm_imp_abort "Unable to start the docker container '${__PVM_TARGET_CONTAINER_NAME}' from the image '${__PVM_TARGET_IMAGE_NAME_AND_TAG}'."
   fi
 
-  __DEVENV_ENV_OS="$(__devenv_docker_dev_img_exec sed '/PRETTY_NAME/!d;s/[^=]*="\([^"]*\)"/\1/' /etc/os-release)"
+  __PVM_ENV_OS="$(__pvm_docker_dev_img_exec sed '/PRETTY_NAME/!d;s/[^=]*="\([^"]*\)"/\1/' /etc/os-release)"
 
-  print "Started container '${__DEVENV_TARGET_CONTAINER_NAME}' (id ${__DEVENV_TARGET_COINTAINER_ID:0:7})" \
-        "for target '${__DEVENV_TARGET}' running on ${__DEVENV_ENV_OS}." \
-        "\nThe port ${__DEVENV_PORT} is open on the container and mapped to the same port on the host." \
+  print "Started container '${__PVM_TARGET_CONTAINER_NAME}' (id ${__PVM_TARGET_COINTAINER_ID:0:7})" \
+        "for target '${__PVM_TARGET}' running on ${__PVM_ENV_OS}." \
+        "\nThe port ${__PVM_PORT} is open on the container and mapped to the same port on the host." \
         "\nThe container will be automatically stopped and removed when this shell session exits."
   print
 }
 
-function __devenv_docker_dev_img_exec() {
-  docker exec "${__DEVENV_TARGET_COINTAINER_ID}" "${@}"
+function __pvm_docker_dev_img_exec() {
+  docker exec "${__PVM_TARGET_COINTAINER_ID}" "${@}"
 }
 
-function __devenv_docker_dev_img_exec_interactive() {
-  if ! [[ "${PWD}" =~ "^${__DEVENV_APP_ROOT_DIR_FULL_PATH}" ]]; then
-    __devenv_echo_error "Outside of the ${__DEVENV_TOOL_NAME} folder tree at '${__DEVENV_APP_ROOT_DIR_FULL_PATH}'."
+function __pvm_docker_dev_img_exec_interactive() {
+  if ! [[ "${PWD}" =~ "^${__PVM_APP_ROOT_DIR_FULL_PATH}" ]]; then
+    __pvm_echo_error "Outside of the ${__PVM_TOOL_NAME} folder tree at '${__PVM_APP_ROOT_DIR_FULL_PATH}'."
     return 1
   fi
 
@@ -233,7 +233,7 @@ function __devenv_docker_dev_img_exec_interactive() {
     shift
     docker_user='root'
   else
-    docker_user="${__DEVENV_CONTAINER_USER}"
+    docker_user="${__PVM_CONTAINER_USER}"
   fi
 
   # Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
@@ -254,88 +254,88 @@ function __devenv_docker_dev_img_exec_interactive() {
       --interactive \
       --tty \
       --user "${docker_user}" \
-      --workdir "${PWD/${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}}" \
-      "${__DEVENV_TARGET_CONTAINER_NAME}" \
+      --workdir "${PWD/${__PVM_APP_ROOT_DIR_FULL_PATH}/${__PVM_MOUNTED_APP_ROOT_DIR_FULL_PATH}}" \
+      "${__PVM_TARGET_CONTAINER_NAME}" \
       "${@}"
 }
 
-function __devenv_docker_dev_img_exec_interactive_as_root() {
-  __devenv_docker_dev_img_exec_interactive --as-root "${@}"
+function __pvm_docker_dev_img_exec_interactive_as_root() {
+  __pvm_docker_dev_img_exec_interactive --as-root "${@}"
 }
 
-function __devenv_imp_print_and_run_command() {
+function __pvm_imp_print_and_run_command() {
   print "$ ${@}"
-  __devenv_docker_dev_img_exec "${@}"
+  __pvm_docker_dev_img_exec "${@}"
 }
 
 if [ -n "${TMUX}" ]; then
-  tmux rename-window "$(basename $PWD) - ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
+  tmux rename-window "$(basename $PWD) - ${__PVM_TARGET} ${__PVM_ENV_VERSION}"
 fi
 
-if __devenv_imp_docker_dockerfile_unmodified_since_last_build; then
+if __pvm_imp_docker_dockerfile_unmodified_since_last_build; then
   docker image inspect \
-    --format="Image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' exists locally. It was built  on {{.Created}}." \
-    "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
+    --format="Image '${__PVM_TARGET_IMAGE_NAME_AND_TAG}' exists locally. It was built  on {{.Created}}." \
+    "${__PVM_TARGET_IMAGE_NAME_AND_TAG}" \
     2>/dev/null
 else
-  __devenv_imp_docker_build_image
+  __pvm_imp_docker_build_image
 fi
 
-__devenv_imp_docker_dev_img_start
+__pvm_imp_docker_dev_img_start
 
 # DOC: https://zsh.sourceforge.io/Doc/Release/Functions.html
 # SOURCE: 21nov2021 https://stackoverflow.com/a/22794374
 if [[ "${SHELL}" == '/bin/zsh' ]]; then
-  zshexit() { __devenv_reset_env || true }
+  zshexit() { __pvm_reset_env || true }
 else
-  trap '__devenv_reset_env || true' EXIT
+  trap '__pvm_reset_env || true' EXIT
 fi
 
-__devenv_imp_after_docker_dev_img_start
+__pvm_imp_after_docker_dev_img_start
 
-for command_at_the_end in ${__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END[@]}; do
+for command_at_the_end in ${__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END[@]}; do
   # (z) Split the result of the expansion into words
   # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
-  if ! __devenv_imp_print_and_run_command "${(z)command_at_the_end}"; then
-    __devenv_echo_error "Execution of '${command_at_the_end}' failed"
+  if ! __pvm_imp_print_and_run_command "${(z)command_at_the_end}"; then
+    __pvm_echo_error "Execution of '${command_at_the_end}' failed"
   fi
   echo
 done
 unset command_at_the_end
 
-__DEVENV_IMP_ALIASES[devenv_container]='/bin/bash'
-__DEVENV_IMP_ALIASES_AS_ROOT[devenv_container_as_root]='/bin/bash'
+__PVM_IMP_ALIASES[pvm_container]='/bin/bash'
+__PVM_IMP_ALIASES_AS_ROOT[pvm_container_as_root]='/bin/bash'
 
-for alias_name alias_command in ${(kv)__DEVENV_IMP_ALIASES}; do
-  alias ${alias_name}="__devenv_docker_dev_img_exec_interactive ${alias_command}"
+for alias_name alias_command in ${(kv)__PVM_IMP_ALIASES}; do
+  alias ${alias_name}="__pvm_docker_dev_img_exec_interactive ${alias_command}"
 done
 unset alias_name alias_command
 
-for alias_name alias_command in ${(kv)__DEVENV_IMP_ALIASES_AS_ROOT}; do
-  alias ${alias_name}="__devenv_docker_dev_img_exec_interactive_as_root ${alias_command}"
+for alias_name alias_command in ${(kv)__PVM_IMP_ALIASES_AS_ROOT}; do
+  alias ${alias_name}="__pvm_docker_dev_img_exec_interactive_as_root ${alias_command}"
 done
 unset alias_name alias_command
 
 print "You have now following commands available in this shell session:"
 print
-print -of '  $ %s\n' ${(k)__DEVENV_IMP_ALIASES}
-print -of '  # %s\n' ${(k)__DEVENV_IMP_ALIASES_AS_ROOT}
+print -of '  $ %s\n' ${(k)__PVM_IMP_ALIASES}
+print -of '  # %s\n' ${(k)__PVM_IMP_ALIASES_AS_ROOT}
 print
 
-print "A quick way to hello world in ${__DEVENV_TARGET}:"
+print "A quick way to hello world in ${__PVM_TARGET}:"
 print
-print -f '  $ %s\n' ${__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES[@]//<<HELLOWORLDTEXT>>/Hello, world!}
+print -f '  $ %s\n' ${__PVM_IMP_HOW_TO_HELLO_WORLD_LINES[@]//<<HELLOWORLDTEXT>>/Hello, world!}
 print
 
-print "For more information about getting started with ${__DEVENV_TARGET} visit:"
+print "For more information about getting started with ${__PVM_TARGET} visit:"
 print
-print -- "  - ${__DEVENV_IMP_GET_STARTED_URL?Missing}"
+print -- "  - ${__PVM_IMP_GET_STARTED_URL?Missing}"
 print
 
 if [[ "${SHELL}" == '/bin/zsh' ]]; then
-  unset -m "__DEVENV_IMP_*"
-  unset -fm "__devenv_imp_*"
+  unset -m "__PVM_IMP_*"
+  unset -fm "__pvm_imp_*"
 else
-  unset "${!__DEVENV_IMP_@}"
-  unset -f "${!__devenv_imp_@}"
+  unset "${!__PVM_IMP_@}"
+  unset -f "${!__pvm_imp_@}"
 fi

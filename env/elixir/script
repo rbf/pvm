@@ -1,17 +1,17 @@
 #!/bin/zsh
 
-__DEVENV_SECONDARY_NAME="Phoenix"
-__DEVENV_PORT="4000"
+__PVM_SECONDARY_NAME="Phoenix"
+__PVM_PORT="4000"
 
-__DEVENV_IMP_GET_STARTED_URL='https://elixir-lang.org/getting-started/introduction.html'
+__PVM_IMP_GET_STARTED_URL='https://elixir-lang.org/getting-started/introduction.html'
 
-__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo 'IO.puts(\"<<HELLOWORLDTEXT>>\")' > hello-world.exs")
-__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("elixir hello-world.exs")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo 'IO.puts(\"<<HELLOWORLDTEXT>>\")' > hello-world.exs")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("elixir hello-world.exs")
 
-__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('elixir --version')
-__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('mix phx.new --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('elixir --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('mix phx.new --version')
 
-__DEVENV_IMP_ALIASES[elixir]='elixir'
-__DEVENV_IMP_ALIASES[mix]='mix'
-__DEVENV_IMP_ALIASES[iex]='iex'
-__DEVENV_IMP_ALIASES[escript]='escript'
+__PVM_IMP_ALIASES[elixir]='elixir'
+__PVM_IMP_ALIASES[mix]='mix'
+__PVM_IMP_ALIASES[iex]='iex'
+__PVM_IMP_ALIASES[escript]='escript'

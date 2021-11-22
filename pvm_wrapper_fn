@@ -1,0 +1,17 @@
+#!/bin/sh
+
+function pvm() {
+  if [ ${1} = "reset" ]; then
+    if [ -n "${__PVM_TARGET}" ]; then
+      __pvm_reset_env
+    else
+      echo "Nothing to reset"
+    fi
+    return
+  fi
+  /usr/local/bin/pvm "${@}"
+  if [ -f ".pvm/env" ]; then
+    source ".pvm/env"
+    rm ".pvm/env"
+  fi
+}
