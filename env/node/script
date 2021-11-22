@@ -1,12 +1,14 @@
+#!/bin/zsh
+
 __DEVENV_SECONDARY_NAME="npm"
 __DEVENV_PORT="3000"
 
-__DEVENV_GET_STARTED_URL='https://nodejs.org/en/docs/guides/getting-started-guide/'
+__DEVENV_IMP_GET_STARTED_URL='https://nodejs.org/en/docs/guides/getting-started-guide/'
 
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("echo 'console.log(\"<<HELLOWORLDTEXT>>\")' > hello_world.js")
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("node hello_world.js")
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo 'console.log(\"<<HELLOWORLDTEXT>>\")' > hello_world.js")
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("node hello_world.js")
 
-function __devenv_after_docker_dev_img_start() {
+function __devenv_imp_after_docker_dev_img_start() {
   if ! [ -f "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.node/bin/npm" ]; then
     if [ -d "${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.node" ]; then
       __devenv_echo_error "'${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.node' directory is present but 'npm' executable is missing. Something went wrong. Exit and relaunch the env setup."
@@ -19,11 +21,11 @@ function __devenv_after_docker_dev_img_start() {
   fi
 }
 
-__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('node --version')
-__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('npm --version')
-__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('npx nodemon --version')
-__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('npx eslint --version')
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('node --version')
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('npm --version')
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('npx nodemon --version')
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('npx eslint --version')
 
-__DEVENV_ALIASES[node]='node'
-__DEVENV_ALIASES[npm]='npm'
-__DEVENV_ALIASES[npx]='npx'
+__DEVENV_IMP_ALIASES[node]='node'
+__DEVENV_IMP_ALIASES[npm]='npm'
+__DEVENV_IMP_ALIASES[npx]='npx'

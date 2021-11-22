@@ -1,7 +1,9 @@
-__DEVENV_GET_STARTED_URL='https://golang.org/doc/tutorial/getting-started'
+#!/bin/zsh
 
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('go mod init example/hello')
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=("cat << EOF > hello.go
+__DEVENV_IMP_GET_STARTED_URL='https://golang.org/doc/tutorial/getting-started'
+
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=('go mod init example/hello')
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=("cat << EOF > hello.go
 package main
 
 import \"fmt\"
@@ -10,10 +12,10 @@ func main() {
     fmt.Println(\"<<HELLOWORLDTEXT>>\")
 }
 EOF")
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('go run .')
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=('go run .')
 
-__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('go version')
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('go version')
 
-__DEVENV_ALIASES[go]='go'
+__DEVENV_IMP_ALIASES[go]='go'
 # DOC: 16nov2021 https://golang.org/doc/install/source#environment
-__DEVENV_ALIASES[build_for_macos]='env GOOS=darwin GOARCH=amd64 go build'
+__DEVENV_IMP_ALIASES[build_for_macos]='env GOOS=darwin GOARCH=amd64 go build'

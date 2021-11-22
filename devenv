@@ -334,6 +334,7 @@ done
   env_name_and_version="${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
   mkdir -p ".${DEVENV_NAME}"
   cat << EOF > ".${DEVENV_NAME}/env"
+export __DEVENV_TOOL_NAME="${DEVENV_NAME}"
 export __DEVENV_CUSTOM_PORT="${port}"
 export __DEVENV_TARGET="${__DEVENV_TARGET}"
 export __DEVENV_ENV_VERSION="${__DEVENV_ENV_VERSION}"

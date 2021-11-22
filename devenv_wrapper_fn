@@ -1,3 +1,5 @@
+#!/bin/sh
+
 function devenv() {
   if [ ${1} = "reset" ]; then
     if [ -n "${__DEVENV_TARGET}" ]; then

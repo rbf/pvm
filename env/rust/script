@@ -1,11 +1,13 @@
-__DEVENV_GET_STARTED_URL='https://www.rust-lang.org/learn/get-started'
+#!/bin/zsh
 
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('cargo init')
-__DEVENV_HOW_TO_HELLO_WORLD_LINES+=('cargo run')
+__DEVENV_IMP_GET_STARTED_URL='https://www.rust-lang.org/learn/get-started'
 
-__DEVENV_COMMANDS_TO_RUN_AT_THE_END+=('cargo --version')
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=('cargo init')
+__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES+=('cargo run')
 
-__DEVENV_ALIASES[cargo]='cargo'
-__DEVENV_ALIASES[rustc]='rustc'
-__DEVENV_ALIASES[rustdoc]='rustdoc'
-__DEVENV_ALIASES[rustfmt]='rustfmt'
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('cargo --version')
+
+__DEVENV_IMP_ALIASES[cargo]='cargo'
+__DEVENV_IMP_ALIASES[rustc]='rustc'
+__DEVENV_IMP_ALIASES[rustdoc]='rustdoc'
+__DEVENV_IMP_ALIASES[rustfmt]='rustfmt'

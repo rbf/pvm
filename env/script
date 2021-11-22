@@ -1,13 +1,28 @@
-# This file is to be sourced with devenv.
+#!/bin/zsh
 
 if [[ "${SHELL}" != '/bin/zsh' ]]; then
   echo "ERROR: This script is mean to be sourced on a zsh shell." 1>&2
   return 1
 fi
 
-function __devenv_echo_success() { print -P "%F{2}SUCCESS${*+: }${*}%f" }
+__devenv_reset_env() {
+  if ${__DEVENV_STOP_CONTAINER_ON_RESET:-true} && [ -n "${__DEVENV_TARGET_CONTAINER_NAME}" ]; then
+    print "Force-removing devenv docker container ${__DEVENV_TARGET_CONTAINER_NAME}..."
+    docker rm --force "${__DEVENV_TARGET_CONTAINER_NAME}"
+  fi
+  if [[ "${SHELL}" == '/bin/zsh' ]]; then
+    unset -m "__DEVENV_*"
+    unset -fm "__devenv_*"
+  else
+    unset "${!__DEVENV_@}"
+    unset -f "${!__devenv_@}"
+  fi
+  unalias $(alias | grep __devenv | cut -f 1 -d '=' | xargs echo)
+  [ -n "${TMUX}" ] && tmux rename-window "$(basename $PWD)"
+}
+
 function __devenv_echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" 1>&2 }
-function __devenv_slugify() {
+function __devenv_imp_slugify() {
   echo $(if [ -p /dev/stdin ]; then cat -; else echo "${*}"; fi) \
      | tr -sc '[:alnum:]' '-' \
      | iconv -c -f utf-8 -t ASCII//TRANSLIT \
@@ -16,21 +31,23 @@ function __devenv_slugify() {
      | sed  -e 's/^--*//' -e 's/---*/-/g' -e 's/--*$//'
 }
 
-# To be used as $(__devenv_abort "error message") so that it can effectively
-# return from sourcing this file. Note that it does only work from the top
-# script level, not from within functions. We cannot use 'exit 1' as this file
-# is being sourced, not executed. Alternatively we could abuse the ? expansion
-# parameter and the fact that there is not ENV var called ERROR to write
-# ${ERROR?error message}, which would give us the line number as well. But is
-# less user friendly. It would be useful for dev errors.
-function __devenv_abort() {
-  __devenv_echo_error "${@%.}. Aborting setup."
-  print 'return 1'
+# We cannot use 'exit 1' as this file is being sourced, not executed. We abuse
+# the ? expansion parameter and the fact that there is not ENV var called ERROR
+# to write ${ERROR?error message}.
+function __devenv_imp_abort() {
+  __devenv_echo_error "${@%.}."
+  __devenv_reset_env
+  unset ERROR
+  ${ERROR?Aborting setup.}
 }
 
-if ! [ -n "${__DEVENV_TARGET}" ]; then
-  __devenv_echo_error "Missing __DEVENV_TARGET env var."
-  return 1
+if [ -z "${__DEVENV_TOOL_NAME}" ] || \
+   [ -z "${__DEVENV_TARGET}" ] || \
+   [ -z "${__DEVENV_ENV_VERSION}" ] || \
+   [ -z "${__DEVENV_BASE_IMAGE_VERSION}" ] || \
+   [ -z "${__DEVENV_SECONDARY_VERSION}" ]; then
+    printenv | grep __DEVENV_
+  __devenv_imp_abort "Missing (some) __DEVENV_* env vars."
 fi
 
 export __DEVENV_ENV_SCRIPT_FULL_PATH="${0:A}"
@@ -39,62 +56,25 @@ export __DEVENV_APP_ROOT_DIR_FULL_PATH="$(pwd)"
 export __DEVENV_APP_ROOT_DIRNAME="$(basename "${__DEVENV_APP_ROOT_DIR_FULL_PATH}")"
 export __DEVENV_ENV_OS
 
-export __DEVENV_TOOL_NAME='devenv'
-
 export __DEVENV_CONTAINER_USER="${__DEVENV_TOOL_NAME}"
 export __DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH="/home/${__DEVENV_CONTAINER_USER}/host"
 
 export __DEVENV_TARGET_DIR="${__DEVENV_ENV_DIR_FULL_PATH}/${__DEVENV_TARGET}"
 
 if ! [ -d "${__DEVENV_TARGET_DIR}" ]; then
-  __devenv_echo_error "Target dir '${__DEVENV_TARGET_DIR}' not found."
-  return 1
+  __devenv_imp_abort "Target dir '${__DEVENV_TARGET_DIR}' not found."
 fi
 
-function __devenv_parse_available_versions() {
-  versions="$(set -o pipefail; cat "${__DEVENV_TARGET_DIR}/versions" | sed '/^\s*#/d;/^$/d')" || return
-  # (f) Split the result of the expansion at newlines.
-  # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
-  for version in "${(f)versions}"; do
-    __DEVENV_TARGET_VERSIONS+=("${version%%|*}")
-    __DEVENV_TARGET_SECONDARY_VERSIONS+=("$(echo ${version} | sed '/|/!d;s/[^|]*|\(.*\)/\1/')")
-  done
-  unset version versions
-}
-
-declare -a __DEVENV_COMMANDS_TO_RUN_AT_THE_END
+declare -a __DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END
 
 # Associative array.
 # SOURCE: 16nov2021 https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
-declare -A __DEVENV_ALIASES
-declare -A __DEVENV_ALIASES_AS_ROOT
+declare -A __DEVENV_IMP_ALIASES
+declare -A __DEVENV_IMP_ALIASES_AS_ROOT
 
-function __devenv_after_docker_dev_img_start() {
+function __devenv_imp_after_docker_dev_img_start() {
   # Override this function in ${__DEVENV_TARGET_DIR}/script if there is some setup needed after the container is started.
 }
-
-if [[ "${__DEVENV_BASE_IMAGE_VERSION-undefined}" == "undefined" ]] ||
-   [[ "${__DEVENV_SECONDARY_VERSION-undefined}" == "undefined" ]]; then
-  print -P "%F{3}__DEVENV_BASE_IMAGE_VERSION and/or __DEVENV_SECONDARY_VERSION are not set. Getting defaults...%f"
-
-  if ! __devenv_parse_available_versions; then
-    $(__devenv_abort "Unable to parse available versions from '${__DEVENV_TARGET_DIR}/versions'.")
-  fi
-
-  __DEVENV_BASE_IMAGE_VERSION="${__DEVENV_TARGET_VERSIONS[1]}"
-
-  if ! [ -n "${__DEVENV_BASE_IMAGE_VERSION}" ]; then
-    $(__devenv_abort "Missing __DEVENV_BASE_IMAGE_VERSION ENV var after after parsing '${__DEVENV_TARGET_DIR}/versions'")
-  fi
-
-  if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-    if [ -n "${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}" ]; then
-      __DEVENV_SECONDARY_VERSION="${__DEVENV_TARGET_SECONDARY_VERSIONS[1]}"
-    else
-      $(__devenv_abort "Missing version for '${__DEVENV_SECONDARY_NAME}'")
-    fi
-  fi
-fi
 
 __DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH="${__DEVENV_TARGET_DIR}/script"
 
@@ -103,10 +83,10 @@ if [ -f "${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}.${__DEVENV_BASE_IMAGE_VERSION
 fi
 
 if ! source "${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}"; then
-  $(__devenv_abort "Unable to source '${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}'.")
+  __devenv_imp_abort "Unable to source '${__DEVENV_ENV_SPECIFIC_SCRIPT_FULL_PATH}'."
 fi
 
-export __DEVENV_TARGET_COINTAINER_NAME="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}-${__DEVENV_ENV_VERSION//./-}-ctr"
+export __DEVENV_TARGET_CONTAINER_NAME="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}-${__DEVENV_ENV_VERSION//./-}-ctr"
 
 export __DEVENV_USER_CONFIG_DIR_RELATIVE_PATH=".${__DEVENV_CONTAINER_USER}/${__DEVENV_TARGET}/${__DEVENV_BASE_IMAGE_VERSION}"
 export __DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH="${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_USER_CONFIG_DIR_RELATIVE_PATH}"
@@ -117,30 +97,28 @@ export __DEVENV_PORT="${__DEVENV_CUSTOM_PORT:-${__DEVENV_PORT:-4000}}"
 export __DEVENV_TARGET_IMAGE_NAME_AND_TAG="${__DEVENV_TOOL_NAME}-${__DEVENV_TARGET}:${__DEVENV_BASE_IMAGE_VERSION}"
 
 if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-  __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_slugify ${__DEVENV_SECONDARY_NAME})-${__DEVENV_SECONDARY_VERSION}"
+  __DEVENV_TARGET_IMAGE_NAME_AND_TAG+="-$(__devenv_imp_slugify ${__DEVENV_SECONDARY_NAME})-${__DEVENV_SECONDARY_VERSION}"
 fi
 
-function __devenv_check_docker_available_and_running() {
+function __devenv_imp_check_docker_available_and_running() {
   if ! which docker 1>/dev/null; then
-    __devenv_echo_error "'docker' command not found. Is docker installed?"
-    false
+    __devenv_imp_abort "'docker' command not found. Is docker installed?"
   elif ! docker system info 1>/dev/null 2>/dev/null; then
-    __devenv_echo_error "Cannot connect to the Docker daemon. Is the Docker daemon running?"
-    false
+    __devenv_imp_abort "Cannot connect to the Docker daemon. Is the Docker daemon running?"
   fi
 }
 
-function __devenv_docker_image_title() {
+function __devenv_imp_docker_image_title() {
   local __DEVENV_ENV_VERSION="$(echo "${__DEVENV_BASE_IMAGE_VERSION}" | grep -oE '\d+\.\d+\.\d+')"
   if [ -n "${__DEVENV_SECONDARY_NAME}" ]; then
-    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION} and ${__DEVENV_SECONDARY_NAME} ${__DEVENV_SECONDARY_VERSION}"
+    print "${__DEVENV_TOOL_NAME} image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION} and ${__DEVENV_SECONDARY_NAME} ${__DEVENV_SECONDARY_VERSION}"
   else
-    print "devenv image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
+    print "${__DEVENV_TOOL_NAME} image with ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
   fi
   unset __DEVENV_ENV_VERSION
 }
 
-function __devenv_docker_dockerfile_path() {
+function __devenv_imp_docker_dockerfile_path() {
   local default_dockerfile_path="${__DEVENV_TARGET_DIR}/Dockerfile"
   if [ -f "${default_dockerfile_path}.${__DEVENV_BASE_IMAGE_VERSION}" ]; then
     print "${default_dockerfile_path}.${__DEVENV_BASE_IMAGE_VERSION}"
@@ -149,53 +127,54 @@ function __devenv_docker_dockerfile_path() {
   fi
 }
 
-function __devenv_docker_build_image() {
-  __devenv_check_docker_available_and_running || return $?
-  print "Building $(__devenv_docker_image_title)..."
-  DOCKER_SCAN_SUGGEST=false docker build \
-    --network host \
+function __devenv_imp_docker_build_image() {
+  __devenv_imp_check_docker_available_and_running
+  print "Building $(__devenv_imp_docker_image_title)..."
+  if ! DOCKER_SCAN_SUGGEST=false docker build \
     --build-arg BASE_IMAGE_VERSION=${__DEVENV_BASE_IMAGE_VERSION} \
     --build-arg MOUNTED_APP_ROOT_DIR_FULL_PATH=${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH} \
     --build-arg CONTAINER_USER_CONFIG_DIR_FULL_PATH=${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH} \
     --build-arg CONTAINER_USER=${__DEVENV_CONTAINER_USER} \
     --build-arg SECONDARY_VERSION=${__DEVENV_SECONDARY_VERSION} \
     --label "org.opencontainers.image.title=${__DEVENV_TARGET} Dev Image" \
-    --label "org.opencontainers.image.description=$(__devenv_docker_image_title)" \
+    --label "org.opencontainers.image.description=$(__devenv_imp_docker_image_title)" \
     --label "org.opencontainers.image.created=$(date)" \
-    --label "org.opencontainers.image.revision=$(__devenv_docker_dockerfile_hash)" \
+    --label "org.opencontainers.image.revision=$(__devenv_imp_docker_dockerfile_hash)" \
     --label "org.opencontainers.image.licenses=Private - Not for public usage" \
     --tag ${__DEVENV_TARGET_IMAGE_NAME_AND_TAG} \
-    --file "$(__devenv_docker_dockerfile_path)" \
-    .
+    --file "$(__devenv_imp_docker_dockerfile_path)" \
+    .; then
+    __devenv_imp_abort "Unable to build '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' image."
+  fi
 }
 
-function __devenv_docker_dockerfile_unmodified_since_last_build() {
+function __devenv_imp_docker_dockerfile_unmodified_since_last_build() {
   test \
-   "$(__devenv_docker_dockerfile_hash)" \
+   "$(__devenv_imp_docker_dockerfile_hash)" \
    = \
    "$(docker image inspect \
         --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' \
         ${__DEVENV_TARGET_IMAGE_NAME_AND_TAG})"
 }
 
-function __devenv_docker_dockerfile_hash() {
-  shasum -a256 "$(__devenv_docker_dockerfile_path)" | head -c 7
+function __devenv_imp_docker_dockerfile_hash() {
+  shasum -a256 "$(__devenv_imp_docker_dockerfile_path)" | head -c 7
 }
 
-function __devenv_docker_dev_img_start() {
-  __devenv_check_docker_available_and_running || return $?
+function __devenv_imp_docker_dev_img_start() {
+  __devenv_imp_check_docker_available_and_running
   __DEVENV_EXISTING_APP_ROOT_DIR=$(
-    docker container inspect --format='{{ (index .Mounts 0).Source }}' "${__DEVENV_TARGET_COINTAINER_NAME}" 2>/dev/null
+    docker container inspect --format='{{ (index .Mounts 0).Source }}' "${__DEVENV_TARGET_CONTAINER_NAME}" 2>/dev/null
   )
 
   if [ -n "${__DEVENV_EXISTING_APP_ROOT_DIR}" ]; then
-    __devenv_echo_error \
-      "devenv for '${__DEVENV_TARGET}' is currently instanciated on" \
-      "another shell session on the directory '"${__DEVENV_EXISTING_APP_ROOT_DIR}"'."
+    __DEVENV_STOP_CONTAINER_ON_RESET=false
     print \
-      "Please exit that shell session or manually kill the docker container with" \
-      "'docker rm -f ${__DEVENV_TARGET_COINTAINER_NAME}'."
-    return 1
+      "Please exit the shell session below or manually kill the docker container with" \
+      "'docker rm -f ${__DEVENV_TARGET_CONTAINER_NAME}'."
+    __devenv_imp_abort \
+      "${__DEVENV_TOOL_NAME} for '${__DEVENV_TARGET}' is currently instanciated on" \
+      "another shell session on the directory '"${__DEVENV_EXISTING_APP_ROOT_DIR}"'."
   fi
 
   # Usage:  docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
@@ -212,19 +191,21 @@ function __devenv_docker_dev_img_start() {
   #   --restart string         Restart policy to apply when a container exits (default "no")
   #   -h, --hostname string    Container host name
   #   -v, --volume list        Bind mount a volume
-  __DEVENV_TARGET_COINTAINER_ID="$(set -o pipefail; docker run \
+  if ! __DEVENV_TARGET_COINTAINER_ID="$(docker run \
           --detach \
           --restart=unless-stopped \
           --publish "${__DEVENV_PORT}:${__DEVENV_PORT}" \
-          --name "${__DEVENV_TARGET_COINTAINER_NAME}" \
-          --hostname "${__DEVENV_TARGET_COINTAINER_NAME}" \
+          --name "${__DEVENV_TARGET_CONTAINER_NAME}" \
+          --hostname "${__DEVENV_TARGET_CONTAINER_NAME}" \
           --volume "${__DEVENV_APP_ROOT_DIR_FULL_PATH}:${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}" \
           "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
-          tail -f /dev/null; exit $?)" || return 1
+          tail -f /dev/null)"; then
+    __devenv_imp_abort "Unable to start the docker container '${__DEVENV_TARGET_CONTAINER_NAME}' from the image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}'."
+  fi
 
   __DEVENV_ENV_OS="$(__devenv_docker_dev_img_exec sed '/PRETTY_NAME/!d;s/[^=]*="\([^"]*\)"/\1/' /etc/os-release)"
 
-  print "Started container '${__DEVENV_TARGET_COINTAINER_NAME}' (id ${__DEVENV_TARGET_COINTAINER_ID:0:7})" \
+  print "Started container '${__DEVENV_TARGET_CONTAINER_NAME}' (id ${__DEVENV_TARGET_COINTAINER_ID:0:7})" \
         "for target '${__DEVENV_TARGET}' running on ${__DEVENV_ENV_OS}." \
         "\nThe port ${__DEVENV_PORT} is open on the container and mapped to the same port on the host." \
         "\nThe container will be automatically stopped and removed when this shell session exits."
@@ -237,7 +218,7 @@ function __devenv_docker_dev_img_exec() {
 
 function __devenv_docker_dev_img_exec_interactive() {
   if ! [[ "${PWD}" =~ "^${__DEVENV_APP_ROOT_DIR_FULL_PATH}" ]]; then
-    __devenv_echo_error "Outside of the devnenv folder tree at '${__DEVENV_APP_ROOT_DIR_FULL_PATH}'."
+    __devenv_echo_error "Outside of the ${__DEVENV_TOOL_NAME} folder tree at '${__DEVENV_APP_ROOT_DIR_FULL_PATH}'."
     return 1
   fi
 
@@ -268,7 +249,7 @@ function __devenv_docker_dev_img_exec_interactive() {
       --tty \
       --user "${docker_user}" \
       --workdir "${PWD/${__DEVENV_APP_ROOT_DIR_FULL_PATH}/${__DEVENV_MOUNTED_APP_ROOT_DIR_FULL_PATH}}" \
-      "${__DEVENV_TARGET_COINTAINER_NAME}" \
+      "${__DEVENV_TARGET_CONTAINER_NAME}" \
       "${@}"
 }
 
@@ -276,46 +257,26 @@ function __devenv_docker_dev_img_exec_interactive_as_root() {
   __devenv_docker_dev_img_exec_interactive --as-root "${@}"
 }
 
-if [ -n "${TMUX}" ]; then
-  tmux rename-window "$(basename $PWD) - ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
-fi
-
-if __devenv_docker_dockerfile_unmodified_since_last_build; then
-  docker image inspect \
-    --format="Image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' exists locally. It was created on {{.Created}}." \
-    "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
-    2>/dev/null
-else
-  __devenv_docker_build_image || return $?
-fi
-
-function __devenv_print_and_run_command() {
+function __devenv_imp_print_and_run_command() {
   print "$ ${@}"
   __devenv_docker_dev_img_exec "${@}"
 }
 
-if ! __devenv_docker_dev_img_start; then
-  docker rm --force "${__DEVENV_TARGET_COINTAINER_NAME}"
-  $(__devenv_abort "Unable to start the docker container")
+if [ -n "${TMUX}" ]; then
+  tmux rename-window "$(basename $PWD) - ${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
 fi
 
-__devenv_reset_env() {
-  print "Force-removing devenv docker container ${__DEVENV_TARGET_COINTAINER_NAME}..."
-  docker rm --force "${__DEVENV_TARGET_COINTAINER_NAME}"
-  if [[ "${SHELL}" == '/bin/zsh' ]]; then
-    unset -m "__DEVENV_*"
-    unset -fm "__devenv_*"
-  else
-    unset "${!__DEVENV_@}"
-    unset -f "${!__devenv_@}"
-  fi
-  local alias_name
-  for alias_name in $( alias | grep __devenv | cut -f 1 -d '='); do
-    unalias ${alias_name}
-  done
-  unset alias_name
-  tmux rename-window "$(basename $PWD)"
-}
+if __devenv_imp_docker_dockerfile_unmodified_since_last_build; then
+  docker image inspect \
+    --format="Image '${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}' exists locally. It was built  on {{.Created}}." \
+    "${__DEVENV_TARGET_IMAGE_NAME_AND_TAG}" \
+    2>/dev/null
+else
+  __devenv_imp_docker_build_image
+fi
+
+__devenv_imp_docker_dev_img_start
+
 # DOC: https://zsh.sourceforge.io/Doc/Release/Functions.html
 # SOURCE: 21nov2021 https://stackoverflow.com/a/22794374
 if [[ "${SHELL}" == '/bin/zsh' ]]; then
@@ -324,62 +285,51 @@ else
   trap '__devenv_reset_env || true' EXIT
 fi
 
-__devenv_after_docker_dev_img_start
+__devenv_imp_after_docker_dev_img_start
 
-for command_at_the_end in ${__DEVENV_COMMANDS_TO_RUN_AT_THE_END[@]}; do
+for command_at_the_end in ${__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END[@]}; do
   # (z) Split the result of the expansion into words
   # SOURCE: 17nov2021 https://zsh.sourceforge.io/Doc/Release/Expansion.html#Glob-Qualifiers
-  if ! __devenv_print_and_run_command "${(z)command_at_the_end}"; then
+  if ! __devenv_imp_print_and_run_command "${(z)command_at_the_end}"; then
     __devenv_echo_error "Execution of '${command_at_the_end}' failed"
   fi
   echo
 done
 unset command_at_the_end
 
-__DEVENV_ALIASES[devenv_container]='/bin/bash'
-__DEVENV_ALIASES_AS_ROOT[devenv_container_as_root]='/bin/bash'
+__DEVENV_IMP_ALIASES[devenv_container]='/bin/bash'
+__DEVENV_IMP_ALIASES_AS_ROOT[devenv_container_as_root]='/bin/bash'
 
-for alias_name alias_command in ${(kv)__DEVENV_ALIASES}; do
+for alias_name alias_command in ${(kv)__DEVENV_IMP_ALIASES}; do
   alias ${alias_name}="__devenv_docker_dev_img_exec_interactive ${alias_command}"
 done
 unset alias_name alias_command
 
-for alias_name alias_command in ${(kv)__DEVENV_ALIASES_AS_ROOT}; do
+for alias_name alias_command in ${(kv)__DEVENV_IMP_ALIASES_AS_ROOT}; do
   alias ${alias_name}="__devenv_docker_dev_img_exec_interactive_as_root ${alias_command}"
 done
 unset alias_name alias_command
 
 print "You have now following commands available in this shell session:"
 print
-print -of '  $ %s\n' ${(k)__DEVENV_ALIASES}
-print -of '  # %s\n' ${(k)__DEVENV_ALIASES_AS_ROOT}
+print -of '  $ %s\n' ${(k)__DEVENV_IMP_ALIASES}
+print -of '  # %s\n' ${(k)__DEVENV_IMP_ALIASES_AS_ROOT}
 print
 
 print "A quick way to hello world in ${__DEVENV_TARGET}:"
 print
-print -f '  $ %s\n' ${__DEVENV_HOW_TO_HELLO_WORLD_LINES[@]//<<HELLOWORLDTEXT>>/Hello, world!}
+print -f '  $ %s\n' ${__DEVENV_IMP_HOW_TO_HELLO_WORLD_LINES[@]//<<HELLOWORLDTEXT>>/Hello, world!}
 print
 
 print "For more information about getting started with ${__DEVENV_TARGET} visit:"
 print
-print -- "  - ${__DEVENV_GET_STARTED_URL?Missing}"
+print -- "  - ${__DEVENV_IMP_GET_STARTED_URL?Missing}"
 print
 
-unset -f __devenv_print_and_run_command
-unset -f __devenv_check_docker_available_and_running
-unset -f __devenv_docker_dev_img_start
-unset -f __devenv_docker_build_image
-unset -f __devenv_docker_dockerfile_unmodified_since_last_build
-unset -f __devenv_docker_dockerfile_hash
-unset -f __devenv_echo_success
-unset -f __devenv_slugify
-unset -f __devenv_abort
-unset -f __devenv_docker_image_title
-unset -f __devenv_after_docker_dev_img_start
-unset -f __devenv_docker_dockerfile_path
-unset -f __devenv_parse_available_versions
-unset __DEVENV_COMMANDS_TO_RUN_AT_THE_END
-unset __DEVENV_ALIASES
-unset __DEVENV_ALIASES_AS_ROOT
-unset __DEVENV_GET_STARTED_URL
-unset __DEVENV_HOW_TO_HELLO_WORLD_LINES
+if [[ "${SHELL}" == '/bin/zsh' ]]; then
+  unset -m "__DEVENV_IMP_*"
+  unset -fm "__devenv_imp_*"
+else
+  unset "${!__DEVENV_IMP_@}"
+  unset -f "${!__devenv_imp_@}"
+fi
