@@ -23,7 +23,7 @@ RUN set -xe \
       && echo 'uname --all' >> /etc/bash.bashrc \
       && echo '(source /etc/os-release; echo ${PRETTY_NAME} - \(cat /etc/os-release for details\))' >> /etc/bash.bashrc \
       && apt-get update -y \
-      && apt-get install -y make git zip unzip less vim \
+      && apt-get install -y make man curl wget git zip unzip less vim \
       && apt-get clean -y \
       && git config --global init.defaultBranch main
 
