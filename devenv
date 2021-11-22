@@ -298,6 +298,22 @@ function source_devenv_wrapper_fn() {
   print "source ${DEVENV_FULL_PATH}_wrapper_fn \"${${DEVENV_FULL_PATH}}\""
 }
 
+function host_os() {
+  case "$(uname -s)" in
+    Darwin* )
+      print "darwin"
+      ;;
+    FreeBSD* )
+      print "linux"
+      ;;
+    OpenBSD* )
+      print "linux"
+      ;;
+    * )
+      print "linux"
+  esac
+}
+
 function use_target_env() {
   if [ -z "${TMUX}" ]; then
     exit_with_error "${DEVENV_NAME} currently only works from within a tmux session."
@@ -334,6 +350,7 @@ done
   env_name_and_version="${__DEVENV_TARGET} ${__DEVENV_ENV_VERSION}"
   mkdir -p ".${DEVENV_NAME}"
   cat << EOF > ".${DEVENV_NAME}/env"
+export __DEVENV_HOST_OS="$(host_os)"
 export __DEVENV_TOOL_NAME="${DEVENV_NAME}"
 export __DEVENV_CUSTOM_PORT="${port}"
 export __DEVENV_TARGET="${__DEVENV_TARGET}"

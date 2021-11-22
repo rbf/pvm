@@ -17,15 +17,40 @@ function __devenv_imp_after_docker_dev_img_start() {
     print "Copying preinstalled node dependencies and tools into '.node' dir..."
     __devenv_docker_dev_img_exec mkdir -p "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}"
     __devenv_docker_dev_img_exec cp -R /home/preinstalled-node-prefix/ "${__DEVENV_CONTAINER_USER_CONFIG_DIR_FULL_PATH}/.node"
-    echo
+    print
   fi
+
+  if [ "${__DEVENV_HOST_OS}" = "darwin" ]; then
+    local electron_macos_binary="${__DEVENV_HOST_USER_CONFIG_DIR_FULL_PATH}/.node/lib/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
+    if ! [ -f "${electron_macos_binary}" ]; then
+      print "Installing macOS version of the electron app runner."
+      # SOURCE: 22nov2021 https://github.com/electron/electron/issues/17972#issuecomment-958110165
+      # SOURCE: 22nov2021 https://jaked.org/blog/2021-02-18-How-to-run-Electron-on-Linux-on-Docker-on-Mac
+      # SOURCE: 22nov2021 https://calbertts.medium.com/developing-electron-apps-in-macos-afd21b4a59e3
+      # SOURCE: 22nov2021 https://trigodev.com/blog/develop-electron-in-docker
+      # SOURCE: 22nov2021 https://gist.github.com/paul-krohn/e45f96181b1cf5e536325d1bdee6c949
+      __devenv_docker_dev_img_exec env npm_config_platform=darwin npm install --global electron
+      print
+    fi
+    alias electron="${electron_macos_binary}"
+    print "Note that if you are building an electron app it is not trivial to run it from inside the" \
+          "${__DEVENV_TOOL_NAME} container back on macOS. As a workaround, use the alias 'electron .'" \
+          "instead of your usual way, e.g. 'npm start'."
+    print
+  fi
+}
+
+function __devenv_before_env_reset() {
+  unalias electron
 }
 
 __DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('node --version')
 __DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('npm --version')
 __DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('npx nodemon --version')
 __DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('npx eslint --version')
+__DEVENV_IMP_COMMANDS_TO_RUN_AT_THE_END+=('yarn --version')
 
 __DEVENV_IMP_ALIASES[node]='node'
 __DEVENV_IMP_ALIASES[npm]='npm'
 __DEVENV_IMP_ALIASES[npx]='npx'
+__DEVENV_IMP_ALIASES[yarn]='yarn'

@@ -5,7 +5,12 @@ if [[ "${SHELL}" != '/bin/zsh' ]]; then
   return 1
 fi
 
+function __devenv_before_env_reset() {
+  # Override this function in ${__DEVENV_TARGET_DIR}/script if there is some setup needed before resetting the environment.
+}
+
 __devenv_reset_env() {
+  __devenv_before_env_reset
   if ${__DEVENV_STOP_CONTAINER_ON_RESET:-true} && [ -n "${__DEVENV_TARGET_CONTAINER_NAME}" ]; then
     print "Force-removing devenv docker container ${__DEVENV_TARGET_CONTAINER_NAME}..."
     docker rm --force "${__DEVENV_TARGET_CONTAINER_NAME}"
@@ -21,7 +26,7 @@ __devenv_reset_env() {
   [ -n "${TMUX}" ] && tmux rename-window "$(basename $PWD)"
 }
 
-function __devenv_echo_error()   { print -P "%F{1}ERROR${*+: }${*}%f" 1>&2 }
+function __devenv_echo_error() { print -P "%F{1}ERROR${*+: }${*}%f" 1>&2 }
 function __devenv_imp_slugify() {
   echo $(if [ -p /dev/stdin ]; then cat -; else echo "${*}"; fi) \
      | tr -sc '[:alnum:]' '-' \
@@ -41,7 +46,8 @@ function __devenv_imp_abort() {
   ${ERROR?Aborting setup.}
 }
 
-if [ -z "${__DEVENV_TOOL_NAME}" ] || \
+if [ -z "${__DEVENV_HOST_OS}" ] || \
+   [ -z "${__DEVENV_TOOL_NAME}" ] || \
    [ -z "${__DEVENV_TARGET}" ] || \
    [ -z "${__DEVENV_ENV_VERSION}" ] || \
    [ -z "${__DEVENV_BASE_IMAGE_VERSION}" ] || \
