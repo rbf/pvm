@@ -289,8 +289,8 @@ function set_target_env_and_tool_versions_or_exit() {
   parse_env_versions "${TARGET_ENV_DIR}"
 
   if ! [ -n "${1}" ]; then
-    __PVM_BASE_IMAGE_VERSION="${IMAGE_TAGS[0]}"
-    __PVM_SECONDARY_VERSION="${TOOL_VERSIONS[0]}"
+    BASE_IMAGE_VERSION="${IMAGE_TAGS[0]}"
+    SECONDARY_VERSION="${TOOL_VERSIONS[0]}"
     return
   fi
 
@@ -303,14 +303,14 @@ function set_target_env_and_tool_versions_or_exit() {
     env_version="${IMAGE_TAGS[$i]}"
     tool_version="${TOOL_VERSIONS[$i]}"
     if [[ "${env_version}" =~ "(^|-)${env_version_pattern}" ]] && [[ "${tool_version}" =~ "^${tool_version_pattern}" ]]; then
-      __PVM_BASE_IMAGE_VERSION="${env_version}"
-      __PVM_SECONDARY_VERSION="${tool_version}"
+      BASE_IMAGE_VERSION="${env_version}"
+      SECONDARY_VERSION="${tool_version}"
       return
     fi
   done
   exit_with_error \
-    "No available ${__PVM_TARGET} version matching '${1}'${2:+ with tool version "'"}${2}${2:+"'"}." \
-    "Type 'pvm list -a -f ${__PVM_TARGET}' for a list of available ${__PVM_TARGET} versions."
+    "No available ${TARGET_ENV} version matching '${1}'${2:+ with tool version "'"}${2}${2:+"'"}." \
+    "Type 'pvm list -a -f ${TARGET_ENV}' for a list of available ${TARGET_ENV} versions."
 }
 
 function source_pvm_wrapper_fn() {
@@ -338,44 +338,44 @@ function use_target_env() {
     exit_with_error "${PVM_NAME} currently only works from within a tmux session."
   fi
   while (( # > 0 )); do
-  case "${1}" in
-    --port|-p )
-      flag="${1}"
-      shift
-      if [ -n "${1}" ]; then
-        port="${1}"
+    case "${1}" in
+      --port|-p )
+        flag="${1}"
         shift
-      else
-        exit_with_error "Missing value for '${flag}' flag"
-      fi
-      ;;
-    -- )
-      shift
-      break
-      ;;
-    -* )
-      exit_with_error "Unsupported option '${1}' for open command"
-      ;;
-    * )
-      break
-      ;;
-  esac
-done
-  __PVM_TARGET="${1}"
-  check_available_target_env_or_exit "${__PVM_TARGET}"
+        if [ -n "${1}" ]; then
+          PORT="${1}"
+          shift
+        else
+          exit_with_error "Missing value for '${flag}' flag"
+        fi
+        ;;
+      -- )
+        shift
+        break
+        ;;
+      -* )
+        exit_with_error "Unsupported option '${1}' for open command"
+        ;;
+      * )
+        break
+        ;;
+    esac
+  done
+  TARGET_ENV="${1}"
+  check_available_target_env_or_exit "${TARGET_ENV}"
   set_target_env_and_tool_versions_or_exit "${2}" "${3}"
 
-  __PVM_ENV_VERSION="$(env_version "${__PVM_BASE_IMAGE_VERSION}")"
-  env_name_and_version="${__PVM_TARGET} ${__PVM_ENV_VERSION}"
+  TARGET_ENV_VERSION="$(env_version "${BASE_IMAGE_VERSION}")"
+  env_name_and_version="${TARGET_ENV} ${TARGET_ENV_VERSION}"
   mkdir -p ".${PVM_NAME}"
   cat << EOF > ".${PVM_NAME}/env"
 export __PVM_HOST_OS="$(host_os)"
 export __PVM_TOOL_NAME="${PVM_NAME}"
-export __PVM_CUSTOM_PORT="${port}"
-export __PVM_TARGET="${__PVM_TARGET}"
-export __PVM_ENV_VERSION="${__PVM_ENV_VERSION}"
-export __PVM_BASE_IMAGE_VERSION="${__PVM_BASE_IMAGE_VERSION}"
-export __PVM_SECONDARY_VERSION="${__PVM_SECONDARY_VERSION}"
+export __PVM_CUSTOM_PORT="${PORT}"
+export __PVM_TARGET="${TARGET_ENV}"
+export __PVM_ENV_VERSION="${TARGET_ENV_VERSION}"
+export __PVM_BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}"
+export __PVM_SECONDARY_VERSION="${SECONDARY_VERSION}"
 source ${PVM_DIR}/env/script
 EOF
 }
