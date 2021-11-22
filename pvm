@@ -2,7 +2,8 @@
 
 set -o pipefail
 
-PVM_VERSION='v0.1'
+PVM_VERSION='0.1'
+PVM_URL='https://github.com/rbf/pvm'
 
 # Make arrays to be zero-based, as in bash.
 setopt KSH_ARRAYS
@@ -13,20 +14,41 @@ PVM_NAME="$(basename "${PVM_FULL_PATH}")"
 INSTALL_DIR="/usr/local/bin"
 INSTALL_FULL_PATH="${INSTALL_DIR}/${PVM_NAME}"
 
+function print_version() {
+  print ${PVM_NAME} ${PVM_VERSION}
+}
+
 function print_help() {
   print -P "
-%B${PVM_NAME} ${PVM_VERSION}%b
+%B$(print_version)%b
 
     Setup and use local dev environments without installing them locally
     leveraging Docker to simulate the commands available normally for the
     given dev environment.
 
-    Note that this currently only works for Zshell and in a Tmux session.
+    Note: Although ${PVM_NAME} leverages Docker to start containers for each
+    environment, it expects Docker to be running in the system and does not
+    start it if missing. If you do not have Docker installed on your machine,
+    please consider e.g. checking out Docker Desktop at
+
+        https://www.docker.com/products/docker-desktop
+
+    Note: ${PVM_NAME} is in its version ${PVM_VERSION} and currently only works
+    for Zshell and on macOS. Bash and Linux compatibility might come in the
+    future.
+
+    More details: ${PVM_URL}
 
 
 %BUsage:%b
 
-  %B${PVM_NAME}%b %B%F{2}command%f%b [%F{3}flags...%f] [%F{3}options...%f]
+  %B${PVM_NAME}%b [%B%F{2}command%f%b] [%F{3}flags...%f] [%F{3}options...%f]
+
+
+%BAvailable top level flags:%b
+
+  %B%F{3}--version%f%b, %F{3}-v%f       Print the ${PVM_NAME} version.
+  %B%F{3}--help%f%b, %F{3}-h%f          Print this help.
 
 
 %BAvailable commands:%b
@@ -51,14 +73,12 @@ function print_help() {
 
       %F{3}--port%f, %F{3}-p int%f        use the given port on the ${PVM_NAME} container and bind it
                             to the same port on the host system.
-
-  %B%F{2}help%f%b                Print this help.
 "
 }
 
 function exit_with_error() {
   print -P "%F{1}ERROR${*+: }${*}%f" 1>&2
-  print "Type 'pvm help' for more information." 1>&2
+  print "Type 'pvm --help' for more information." 1>&2
   exit 1
 }
 
@@ -383,9 +403,14 @@ function parse_commands_and_options() {
         source_pvm_wrapper_fn "${@}"
         exit
         ;;
-      help|'' )
+      --help|-h|'' )
         shift
         print_help
+        exit
+        ;;
+      --version|-v )
+        shift
+        print_version
         exit
         ;;
       * )
