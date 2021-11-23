@@ -2,7 +2,7 @@
 
 set -o pipefail
 
-PVM_VERSION='0.2.0'
+PVM_VERSION='0.2.1'
 PVM_URL='https://github.com/rbf/pvm'
 
 # Make arrays to be zero-based, as in bash.
