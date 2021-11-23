@@ -26,18 +26,26 @@ function print_help() {
     leveraging Docker to simulate the commands available normally for the
     given dev environment.
 
-    Note: Although ${PVM_NAME} leverages Docker to start containers for each
+    More details: ${PVM_URL}
+
+
+%BCaveats:%b
+
+    ${PVM_NAME} is in its version ${PVM_VERSION} and currently only works for Zshell
+    and on macOS. Bash and Linux compatibility might come in the future.
+
+    Note that although ${PVM_NAME} leverages Docker to start containers for each
     environment, it expects Docker to be running in the system and does not
     start it if missing. If you do not have Docker installed on your machine,
     please consider e.g. checking out Docker Desktop at
 
         https://www.docker.com/products/docker-desktop
 
-    Note: ${PVM_NAME} is in its version ${PVM_VERSION} and currently only works
-    for Zshell and on macOS. Bash and Linux compatibility might come in the
-    future.
+    Finally, please note that for now the following command needs to be
+    manually added at the end of your .zshrc file to allow ${PVM_NAME} to load
+    environments:
 
-    More details: ${PVM_URL}
+      \$(${PVM_NAME} --setup-zsh-env)
 
 
 %BUsage:%b
