@@ -21,7 +21,7 @@ function __pvm_imp_after_docker_dev_img_start() {
   fi
 
   if [ -f Gemfile ]; then
-    __pvm_print_and_run_command bundle install
+    __pvm_imp_print_and_run_command bundle install
     echo
   fi
 }
