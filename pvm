@@ -100,20 +100,6 @@ function exit_with_success() {
   exit 0
 }
 
-function install() {
-  if [ -f  "${INSTALL_FULL_PATH}" ]; then
-    exit_with_warn "A file named '${PVM_NAME}' is already present in '${INSTALL_DIR}'. Nothing to do."
-  fi
-  ln -vs "${PVM_FULL_PATH}" "${INSTALL_FULL_PATH}" || exit_with_error
-  cat << EOF
-
-Now add the following line at the end of your .zshrc file:
-
-  \$(pvm --setup-zsh-env)
-
-EOF
-}
-
 function get_version_pattern() {
   case "${1}" in
     '' )
@@ -391,11 +377,6 @@ EOF
 function parse_commands_and_options() {
   while (( # > 0 )); do
     case "${1}" in
-      install )
-        shift
-        install
-        exit
-        ;;
       list )
         shift
         list "${@}" | column -txs '|'
