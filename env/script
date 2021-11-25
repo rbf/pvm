@@ -50,10 +50,9 @@ if [ -z "${__PVM_HOST_OS}" ] || \
    [ -z "${__PVM_TOOL_NAME}" ] || \
    [ -z "${__PVM_TARGET}" ] || \
    [ -z "${__PVM_ENV_VERSION}" ] || \
-   [ -z "${__PVM_BASE_IMAGE_VERSION}" ] || \
-   [ -z "${__PVM_SECONDARY_VERSION}" ]; then
+   [ -z "${__PVM_BASE_IMAGE_VERSION}" ]; then
     printenv | grep __PVM_
-  __pvm_imp_abort "Missing (some) __PVM_* env vars."
+  __pvm_imp_abort "Missing required __PVM_* env vars."
 fi
 
 export __PVM_ENV_SCRIPT_FULL_PATH="${0:A}"
