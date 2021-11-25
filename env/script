@@ -114,13 +114,11 @@ function __pvm_imp_check_docker_available_and_running() {
 }
 
 function __pvm_imp_docker_image_title() {
-  local __PVM_ENV_VERSION="$(echo "${__PVM_BASE_IMAGE_VERSION}" | grep -oE '\d+\.\d+\.\d+')"
   if [ -n "${__PVM_SECONDARY_NAME}" ]; then
     print "${__PVM_TOOL_NAME} image with ${__PVM_TARGET} ${__PVM_ENV_VERSION} and ${__PVM_SECONDARY_NAME} ${__PVM_SECONDARY_VERSION}"
   else
     print "${__PVM_TOOL_NAME} image with ${__PVM_TARGET} ${__PVM_ENV_VERSION}"
   fi
-  unset __PVM_ENV_VERSION
 }
 
 function __pvm_imp_docker_dockerfile_path() {
