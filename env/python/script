@@ -1,0 +1,13 @@
+#!/bin/zsh
+
+__PVM_IMP_GET_STARTED_URL='https://www.python.org/about/gettingstarted/'
+
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo 'print(\"<<HELLOWORLDTEXT>>\");' > hello.py")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=('python3 hello.py')
+
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('python3 --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('pip --version')
+
+__PVM_IMP_ALIASES[python3]='python3'
+__PVM_IMP_ALIASES[python]='python3'
+__PVM_IMP_ALIASES[pip]='pip'
