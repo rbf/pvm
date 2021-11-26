@@ -121,7 +121,7 @@ function get_version_pattern() {
 }
 
 function env_version() {
-  echo "${1:-${IMAGE_TAGS[${i}]}}" | grep -oE '\d+\.\d+\.\d+'
+  echo "${1:-${IMAGE_TAGS[${i}]}}" | grep -oE '\d+\.\d+(?:\.\d+)?'
 }
 
 function parse_env_versions() {
