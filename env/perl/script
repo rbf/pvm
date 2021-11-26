@@ -1,0 +1,16 @@
+#!/bin/zsh
+
+__PVM_IMP_GET_STARTED_URL='https://learn.perl.org/first_steps/'
+
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("cat << EOF > hello_world.pl
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+print \"<<HELLOWORLDTEXT>>\n\";
+EOF")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=('perl hello_world.pl')
+
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('perl -v')
+
+__PVM_IMP_ALIASES[perl]='perl'

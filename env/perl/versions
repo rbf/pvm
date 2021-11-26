@@ -1,0 +1,7 @@
+# Available Docker Image tags from https://hub.docker.com/_/perl
+# The top line is the default version.
+# https://dev.perl.org/perl5/news/
+5.34.0-bullseye
+5.32.1-bullseye
+5.30.3-bullseye
+5.28.3-buster
