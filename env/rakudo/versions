@@ -1,0 +1,9 @@
+# Available Docker Image tags from https://hub.docker.com/_/rakudo-star
+# The top line is the default version.
+# https://www.rakudo.org/downloads/star
+2021.04
+2020.10
+2019.03
+2018.10
+2017.10
+2016.11

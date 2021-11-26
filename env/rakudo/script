@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+__PVM_IMP_GET_STARTED_URL='https://raku.org/resources/'
+
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=("echo \"say '<<HELLOWORLDTEXT>>';\" > hello.raku")
+__PVM_IMP_HOW_TO_HELLO_WORLD_LINES+=('raku hello.raku')
+
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('raku --version')
+__PVM_IMP_COMMANDS_TO_RUN_AT_THE_END+=('zef --version')
+
+__PVM_IMP_ALIASES[raku]='raku'
+__PVM_IMP_ALIASES[zef]='zef'
