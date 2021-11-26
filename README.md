@@ -10,6 +10,10 @@ A polyglot version manager leveraging Docker. It currently supports:
   - [ruby](http://www.ruby-lang.org/en/documentation/) (default version based on image `ruby:3.0.2-bullseye`)
   - [rust](https://www.rust-lang.org/learn/get-started) (default version based on image `rust:1.56.1-bullseye`)
 
+All base images are official language images from [DockerHub][dhi].
+
+[dhi]: https://hub.docker.com/search?type=image&category=languages&image_filter=official
+
 ## Install
 
 Currently `pvm` only works for Zshell and on macOS. Bash and Linux compatibility
