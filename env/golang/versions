@@ -1,7 +1,7 @@
 # Available Docker Image tags from https://hub.docker.com/_/golang
 # The top line is the default version.
-1.17.3-bullseye
-1.16.10-bullseye
+1.17.5-bullseye
+1.16.12-bullseye
 1.15.15-buster
 1.14.15-buster
 1.13.15-buster

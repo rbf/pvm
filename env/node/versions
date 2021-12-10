@@ -1,22 +1,23 @@
 # Available Docker Image tags from https://hub.docker.com/_/node
 # https://nodejs.org/en/about/releases/
+# https://github.com/npm/cli/releases
 # The top line is the default version.
-17.1.0-bullseye|8.1.4
-17.1.0-bullseye|7.24.2
-17.1.0-bullseye|6.14.15
-16.13.0-buster|8.1.4
+17.2.0-bullseye|8.3.0
+17.2.0-bullseye|7.24.2
+17.2.0-bullseye|6.14.15
+16.13.0-buster|8.3.0
 16.13.0-buster|7.24.2
 16.13.0-buster|6.14.15
-15.14.0-stretch|8.1.4
+15.14.0-stretch|8.3.0
 15.14.0-stretch|7.24.2
 15.14.0-stretch|6.14.15
-14.18.1-stretch|8.1.4
+14.18.1-stretch|8.3.0
 14.18.1-stretch|7.24.2
 14.18.1-stretch|6.14.15
-13.14.0-stretch|8.1.4
+13.14.0-stretch|8.3.0
 13.14.0-stretch|7.24.2
 13.14.0-stretch|6.14.15
-12.22.7-stretch|8.1.4
+12.22.7-stretch|8.3.0
 12.22.7-stretch|7.24.2
 12.22.7-stretch|6.14.15
 11.15.0-stretch|7.24.2
